@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { upload } from "@vercel/blob/client";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
 
 const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
@@ -85,27 +84,54 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Upload directly to Vercel Blob (browser→CDN, no Vercel body limit) ──
+      // ── Step 1: Initiate a Gemini resumable upload session ────────────────
       setStepStatus("upload", "active");
 
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-        clientPayload: file.type,
-        multipart: true,
-        onUploadProgress: ({ percentage }) => {
-          setUploadProgress(Math.round(percentage));
-        },
+      const urlRes = await fetch("/api/get-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mimeType: file.type, displayName: file.name, fileSize: file.size }),
       });
+      const urlData = await urlRes.json() as { uploadUrl?: string; error?: string };
+      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
 
-      setUploadProgress(100);
+      // ── Step 2: Upload in 3 MB chunks via server proxy (no CORS, within body limit) ──
+      const CHUNK = 3 * 1024 * 1024; // 3 MB — multiple of 256 KB as Gemini requires
+      const total = file.size;
+      let offset = 0;
+      let fileName = "";
+
+      while (offset < total) {
+        const end   = Math.min(offset + CHUNK, total);
+        const chunk = file.slice(offset, end);
+        const isLast = end >= total;
+
+        const res = await fetch("/api/upload-chunk", {
+          method: "POST",
+          headers: {
+            "Content-Type":   file.type,
+            "x-upload-url":   urlData.uploadUrl!,
+            "x-offset":       String(offset),
+            "x-is-last":      String(isLast),
+          },
+          body: chunk,
+        });
+
+        const data = await res.json() as { ok?: boolean; file?: { name: string }; error?: string };
+        if (!res.ok) throw new Error(data.error || "Chunk upload failed");
+        if (isLast) fileName = data.file!.name;
+
+        offset = end;
+        setUploadProgress(Math.round((offset / total) * 100));
+      }
+
       setStepStatus("upload", "done");
 
-      // ── Step 2: Send blob URL to /api/analyze — server downloads + uploads to Gemini ──
+      // ── Step 3: Stream analysis from /api/analyze ─────────────────────────
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blobUrl: blob.url, mimeType: file.type, prompt, description }),
+        body: JSON.stringify({ fileName, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {
