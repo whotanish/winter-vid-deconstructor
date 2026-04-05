@@ -84,38 +84,24 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1a: Get a Gemini resumable upload URL from our server ────────
+      // ── Step 1: POST raw file to /api/upload (Edge runtime — no payload limit,
+      //            no CORS issue, streams straight through to Gemini) ──────────
       setStepStatus("upload", "active");
 
-      const urlRes = await fetch("/api/get-upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mimeType: file.type,
-          displayName: file.name,
-          fileSize: file.size,
-        }),
-      });
-      const urlData = await urlRes.json() as { uploadUrl?: string; error?: string };
-      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
-      const { uploadUrl } = urlData;
-
-      // ── Step 1b: Upload the file directly from the browser to Gemini ─────
-      // The video never touches Vercel — it goes straight from browser → Gemini.
-      const uploadRes = await fetch(uploadUrl!, {
+      const uploadRes = await fetch("/api/upload", {
         method: "POST",
         headers: {
-          "X-Goog-Upload-Offset": "0",
-          "X-Goog-Upload-Command": "upload, finalize",
+          "x-mime-type":    file.type,
+          "x-file-size":    String(file.size),
+          "x-display-name": file.name,
+          "content-type":   file.type,
         },
         body: file,
       });
-      if (!uploadRes.ok) {
-        throw new Error(`Gemini upload failed (${uploadRes.status}): ${await uploadRes.text()}`);
-      }
+      const uploadData = await uploadRes.json() as { file?: { name: string }; error?: string };
+      if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed");
 
-      const uploadData = await uploadRes.json() as { file: { name: string } };
-      const fileName = uploadData.file.name; // e.g. "files/abc123"
+      const fileName = uploadData.file!.name;
       setUploadProgress(100);
       setStepStatus("upload", "done");
 
