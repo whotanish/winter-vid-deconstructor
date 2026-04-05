@@ -92,7 +92,6 @@ export default function Home() {
         access: "public",
         handleUploadUrl: "/api/upload",
         clientPayload: file.type,
-        multipart: true,
         onUploadProgress: ({ percentage }) => {
           setUploadProgress(Math.round(percentage));
         },
