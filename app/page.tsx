@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { upload } from "@vercel/blob/client";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
 
 const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
@@ -84,52 +85,27 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Get a Gemini resumable upload URL (API key stays server-side) ──
+      // ── Step 1: Upload directly to Vercel Blob (browser→CDN, no Vercel body limit) ──
       setStepStatus("upload", "active");
 
-      const urlRes = await fetch("/api/get-upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mimeType: file.type, displayName: file.name, fileSize: file.size }),
-      });
-      const urlData = await urlRes.json() as { uploadUrl?: string; error?: string };
-      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
-
-      // ── Step 2: Upload directly from the browser to Gemini — no Vercel body limit ──
-      const fileName = await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", urlData.uploadUrl!);
-        xhr.setRequestHeader("X-Goog-Upload-Offset", "0");
-        xhr.setRequestHeader("X-Goog-Upload-Command", "upload, finalize");
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable)
-            setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText) as { file: { name: string } };
-              resolve(data.file.name);
-            } catch {
-              reject(new Error("Invalid response from Gemini after upload"));
-            }
-          } else {
-            reject(new Error(`Upload failed (${xhr.status}) — ${xhr.responseText}`));
-          }
-        };
-        xhr.onerror = () => reject(new Error("Network error during upload — check your connection"));
-        xhr.send(file);
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+        clientPayload: file.type,
+        multipart: true,
+        onUploadProgress: ({ percentage }) => {
+          setUploadProgress(Math.round(percentage));
+        },
       });
 
       setUploadProgress(100);
       setStepStatus("upload", "done");
 
-      // ── Step 3: Send just the file name to /api/analyze and stream back ──
+      // ── Step 2: Send blob URL to /api/analyze — server downloads + uploads to Gemini ──
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, mimeType: file.type, prompt, description }),
+        body: JSON.stringify({ blobUrl: blob.url, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {
