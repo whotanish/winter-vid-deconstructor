@@ -6,10 +6,6 @@ import {
   Part,
 } from "@google/generative-ai";
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
-import { writeFile, unlink } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { randomUUID } from "crypto";
 
 export const maxDuration = 300;
 
@@ -27,52 +23,41 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (chunk: Uint8Array) => controller.enqueue(chunk);
-      let tmpPath: string | null = null;
 
       try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) throw new Error("GEMINI_API_KEY is not configured in .env.local");
 
-        const formData = await req.formData();
-        const videoFile = formData.get("video") as File | null;
-        const userPrompt = (formData.get("prompt") as string | null) || "Analyze this video.";
-        const description = (formData.get("description") as string | null) || "";
+        // Video was already uploaded directly from the browser — we just receive the metadata.
+        const { fileName, mimeType, prompt: userPrompt, description } = await req.json() as {
+          fileName: string;
+          mimeType: string;
+          prompt?: string;
+          description?: string;
+        };
 
-        if (!videoFile) throw new Error("No video file provided");
-
-        // ── Step 1: Write to tmp & upload ────────────────────────────────────
-        send(stepEvent("upload", "active"));
-
-        const bytes = await videoFile.arrayBuffer();
-        const ext = videoFile.name.split(".").pop() ?? "mp4";
-        tmpPath = join(tmpdir(), `${randomUUID()}.${ext}`);
-        await writeFile(tmpPath, Buffer.from(bytes));
+        if (!fileName) throw new Error("Missing fileName");
+        if (!mimeType) throw new Error("Missing mimeType");
 
         const fileManager = new GoogleAIFileManager(apiKey);
-        const uploadResult = await fileManager.uploadFile(tmpPath, {
-          mimeType: videoFile.type,
-          displayName: videoFile.name,
-        });
 
-        send(stepEvent("upload", "done"));
-
-        // ── Step 2: Poll until ACTIVE ─────────────────────────────────────────
+        // ── Step 1: Poll until ACTIVE ─────────────────────────────────────────
         send(stepEvent("process", "active"));
 
-        let fileInfo = await fileManager.getFile(uploadResult.file.name);
+        let fileInfo = await fileManager.getFile(fileName);
         const deadline = Date.now() + 4 * 60 * 1000;
 
         while (fileInfo.state === FileState.PROCESSING) {
           if (Date.now() > deadline) throw new Error("File processing timed out after 4 minutes");
           await new Promise((r) => setTimeout(r, 3000));
-          fileInfo = await fileManager.getFile(uploadResult.file.name);
+          fileInfo = await fileManager.getFile(fileName);
         }
 
         if (fileInfo.state === FileState.FAILED) throw new Error("Gemini file processing failed");
 
         send(stepEvent("process", "done"));
 
-        // ── Step 3: Generate with streaming ──────────────────────────────────
+        // ── Step 2: Generate with streaming ──────────────────────────────────
         send(stepEvent("analyze", "active"));
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -87,10 +72,10 @@ export async function POST(req: NextRequest) {
         });
 
         const parts: Part[] = [
-          { fileData: { mimeType: videoFile.type, fileUri: fileInfo.uri } },
+          { fileData: { mimeType, fileUri: fileInfo.uri } },
         ];
         if (description) parts.push({ text: `Video description: ${description}\n\n` });
-        parts.push({ text: userPrompt });
+        parts.push({ text: userPrompt || "Analyze this video." });
 
         const streamResult = await model.generateContentStream({
           contents: [{ role: "user", parts }],
@@ -98,7 +83,7 @@ export async function POST(req: NextRequest) {
 
         send(stepEvent("analyze", "done"));
 
-        // ── Step 4: Stream text chunks ────────────────────────────────────────
+        // ── Step 3: Stream text chunks ────────────────────────────────────────
         send(stepEvent("extract", "active"));
 
         for await (const chunk of streamResult.stream) {
@@ -110,12 +95,11 @@ export async function POST(req: NextRequest) {
         send(enc.encode("data: [DONE]\n\n"));
 
         // cleanup remote file (best-effort)
-        fileManager.deleteFile(uploadResult.file.name).catch(() => undefined);
+        fileManager.deleteFile(fileName).catch(() => undefined);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         send(sse({ error: message }));
       } finally {
-        if (tmpPath) unlink(tmpPath).catch(() => undefined);
         controller.close();
       }
     },

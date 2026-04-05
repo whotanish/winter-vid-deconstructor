@@ -23,7 +23,7 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { id: "upload", label: "Uploading video to Gemini Files API", status: "pending" },
+  { id: "upload", label: "Uploading video directly to Gemini", status: "pending" },
   { id: "process", label: "Waiting for file to become active", status: "pending" },
   { id: "analyze", label: "Analyzing video with Gemini", status: "pending" },
   { id: "extract", label: "Extracting prompt", status: "pending" },
@@ -82,17 +82,46 @@ export default function Home() {
     setErrorMsg("");
     setSteps(STEPS.map((s) => ({ ...s })));
 
-    const formData = new FormData();
-    formData.append("video", file);
-    formData.append("prompt", prompt);
-    if (description) formData.append("description", description);
-
     try {
+      // ── Step 1: Get resumable upload URL from our server (API key stays server-side)
       setStepStatus("upload", "active");
 
+      const initRes = await fetch("/api/upload-init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mimeType: file.type,
+          displayName: file.name,
+          fileSize: file.size,
+        }),
+      });
+      const initData = await initRes.json();
+      if (!initRes.ok) throw new Error(initData.error || "Failed to initiate upload");
+      const { uploadUrl } = initData as { uploadUrl: string };
+
+      // ── Step 2: Upload directly from browser to Gemini (never touches Vercel)
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "X-Goog-Upload-Offset": "0",
+          "X-Goog-Upload-Command": "upload, finalize",
+        },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        const text = await uploadRes.text();
+        throw new Error(`Direct upload failed: ${text}`);
+      }
+      const uploadData = await uploadRes.json() as { file: { name: string; uri: string } };
+      const fileName = uploadData.file.name;
+
+      setStepStatus("upload", "done");
+
+      // ── Step 3: Send only metadata to /api/analyze and stream the result
       const res = await fetch("/api/analyze", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {
