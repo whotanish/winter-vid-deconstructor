@@ -12,6 +12,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   const response = await handleUpload({
     body,
     request: req,
+    token: process.env.BLOB2_READ_WRITE_TOKEN,
     onBeforeGenerateToken: async (_pathname, clientPayload) => {
       const mimeType = clientPayload ?? "";
       if (!ALLOWED.has(mimeType)) throw new Error("Invalid video type");

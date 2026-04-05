@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         const { file: geminiFile } = await geminiRes.json() as { file: { name: string; uri: string } };
         geminiFileName = geminiFile.name;
 
-        del(blobUrl).catch(() => undefined);
+        del(blobUrl, { token: process.env.BLOB2_READ_WRITE_TOKEN }).catch(() => undefined);
         blobUrl = undefined;
 
         // ── Step 2: Poll until Gemini file is ACTIVE ──────────────────────────
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         fileManager.deleteFile(geminiFileName).catch(() => undefined);
       } catch (err) {
         send(sse({ error: err instanceof Error ? err.message : String(err) }));
-        if (blobUrl) del(blobUrl).catch(() => undefined);
+        if (blobUrl) del(blobUrl, { token: process.env.BLOB2_READ_WRITE_TOKEN }).catch(() => undefined);
         if (geminiFileName) {
           const apiKey = process.env.GEMINI_API_KEY;
           if (apiKey) new GoogleAIFileManager(apiKey).deleteFile(geminiFileName).catch(() => undefined);
