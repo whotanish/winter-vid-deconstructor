@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 
 const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
 
@@ -23,10 +24,11 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { id: "upload", label: "Uploading video to Gemini Files API", status: "pending" },
-  { id: "process", label: "Waiting for file to become active", status: "pending" },
-  { id: "analyze", label: "Analyzing video with Gemini", status: "pending" },
-  { id: "extract", label: "Extracting prompt", status: "pending" },
+  { id: "blob_upload",    label: "Uploading video to Vercel Blob",        status: "pending" },
+  { id: "gemini_upload",  label: "Transferring to Gemini Files API",       status: "pending" },
+  { id: "process",        label: "Waiting for file to become active",      status: "pending" },
+  { id: "analyze",        label: "Analyzing video with Gemini",            status: "pending" },
+  { id: "extract",        label: "Extracting prompt",                      status: "pending" },
 ];
 
 export default function Home() {
@@ -83,28 +85,21 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Stream the video through our proxy to Gemini (never buffered in memory)
-      setStepStatus("upload", "active");
+      // ── Step 1: Upload directly to Vercel Blob (bypasses Vercel serverless entirely)
+      setStepStatus("blob_upload", "active");
 
-      // Metadata fields must be appended BEFORE the file so busboy sees them first.
-      const formData = new FormData();
-      formData.append("mimeType", file.type);
-      formData.append("displayName", file.name);
-      formData.append("fileSize", String(file.size));
-      formData.append("file", file);
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+      });
 
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json() as { file?: { name: string }; error?: string };
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed");
-      const fileName = uploadData.file!.name;
+      setStepStatus("blob_upload", "done");
 
-      setStepStatus("upload", "done");
-
-      // ── Step 2: Send only the file name + prompt to /api/analyze and stream the result
+      // ── Step 2: Send just the blob URL to /api/analyze — the server streams it to Gemini
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, mimeType: file.type, prompt, description }),
+        body: JSON.stringify({ blobUrl: blob.url, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {
