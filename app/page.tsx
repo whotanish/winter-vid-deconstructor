@@ -23,7 +23,7 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { id: "upload", label: "Uploading video directly to Gemini", status: "pending" },
+  { id: "upload", label: "Uploading video to Gemini Files API", status: "pending" },
   { id: "process", label: "Waiting for file to become active", status: "pending" },
   { id: "analyze", label: "Analyzing video with Gemini", status: "pending" },
   { id: "extract", label: "Extracting prompt", status: "pending" },
@@ -83,41 +83,24 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Get resumable upload URL from our server (API key stays server-side)
+      // ── Step 1: Stream the video through our proxy to Gemini (never buffered in memory)
       setStepStatus("upload", "active");
 
-      const initRes = await fetch("/api/upload-init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mimeType: file.type,
-          displayName: file.name,
-          fileSize: file.size,
-        }),
-      });
-      const initData = await initRes.json();
-      if (!initRes.ok) throw new Error(initData.error || "Failed to initiate upload");
-      const { uploadUrl } = initData as { uploadUrl: string };
+      // Metadata fields must be appended BEFORE the file so busboy sees them first.
+      const formData = new FormData();
+      formData.append("mimeType", file.type);
+      formData.append("displayName", file.name);
+      formData.append("fileSize", String(file.size));
+      formData.append("file", file);
 
-      // ── Step 2: Upload directly from browser to Gemini (never touches Vercel)
-      const uploadRes = await fetch(uploadUrl, {
-        method: "POST",
-        headers: {
-          "X-Goog-Upload-Offset": "0",
-          "X-Goog-Upload-Command": "upload, finalize",
-        },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        const text = await uploadRes.text();
-        throw new Error(`Direct upload failed: ${text}`);
-      }
-      const uploadData = await uploadRes.json() as { file: { name: string; uri: string } };
-      const fileName = uploadData.file.name;
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json() as { file?: { name: string }; error?: string };
+      if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed");
+      const fileName = uploadData.file!.name;
 
       setStepStatus("upload", "done");
 
-      // ── Step 3: Send only metadata to /api/analyze and stream the result
+      // ── Step 2: Send only the file name + prompt to /api/analyze and stream the result
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
