@@ -37,6 +37,7 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [steps, setSteps] = useState<Step[]>(STEPS.map((s) => ({ ...s })));
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
   const [phase, setPhase] = useState<"idle" | "processing" | "done" | "error">("idle");
@@ -82,17 +83,29 @@ export default function Home() {
     setPhase("processing");
     setResult("");
     setErrorMsg("");
+    setUploadProgress(0);
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
       // ── Step 1: Upload directly to Vercel Blob (bypasses Vercel serverless entirely)
       setStepStatus("blob_upload", "active");
 
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-      });
+      const UPLOAD_TIMEOUT_MS = 120_000; // 2 min — fail visibly instead of hanging
+      const uploadWithTimeout = Promise.race([
+        upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+          onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(
+            "Blob upload timed out after 2 minutes. Make sure BLOB_READ_WRITE_TOKEN is set in Vercel environment variables."
+          )), UPLOAD_TIMEOUT_MS)
+        ),
+      ]);
 
+      const blob = await uploadWithTimeout;
+      setUploadProgress(100);
       setStepStatus("blob_upload", "done");
 
       // ── Step 2: Send just the blob URL to /api/analyze — the server streams it to Gemini
@@ -163,6 +176,7 @@ export default function Home() {
     setPhase("idle");
     setSteps(STEPS.map((s) => ({ ...s })));
     setErrorMsg("");
+    setUploadProgress(0);
   };
 
   return (
@@ -293,6 +307,9 @@ export default function Home() {
                   }`}
                 >
                   {step.label}
+                  {step.id === "blob_upload" && step.status === "active" && uploadProgress > 0 && (
+                    <span className="ml-2 text-violet-400 text-xs">{uploadProgress}%</span>
+                  )}
                 </span>
               </div>
             ))}
