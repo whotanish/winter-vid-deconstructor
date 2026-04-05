@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
-import { upload } from "@vercel/blob/client";
 
 const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
 
@@ -24,11 +23,10 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { id: "blob_upload",    label: "Uploading video to Vercel Blob",        status: "pending" },
-  { id: "gemini_upload",  label: "Transferring to Gemini Files API",       status: "pending" },
-  { id: "process",        label: "Waiting for file to become active",      status: "pending" },
-  { id: "analyze",        label: "Analyzing video with Gemini",            status: "pending" },
-  { id: "extract",        label: "Extracting prompt",                      status: "pending" },
+  { id: "upload",  label: "Uploading video to Gemini Files API",  status: "pending" },
+  { id: "process", label: "Waiting for file to become active",    status: "pending" },
+  { id: "analyze", label: "Analyzing video with Gemini",          status: "pending" },
+  { id: "extract", label: "Extracting prompt",                    status: "pending" },
 ];
 
 export default function Home() {
@@ -44,9 +42,8 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const setStepStatus = (id: string, status: Step["status"]) => {
+  const setStepStatus = (id: string, status: Step["status"]) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
-  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -87,37 +84,50 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Upload directly to Vercel Blob (bypasses Vercel serverless entirely)
-      setStepStatus("blob_upload", "active");
+      // ── Step 1a: Get a Gemini resumable upload URL from our server ────────
+      setStepStatus("upload", "active");
 
-      const UPLOAD_TIMEOUT_MS = 120_000; // 2 min — fail visibly instead of hanging
-      const uploadWithTimeout = Promise.race([
-        upload(file.name, file, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-          onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
+      const urlRes = await fetch("/api/get-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mimeType: file.type,
+          displayName: file.name,
+          fileSize: file.size,
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(
-            "Blob upload timed out after 2 minutes. Make sure BLOB_READ_WRITE_TOKEN is set in Vercel environment variables."
-          )), UPLOAD_TIMEOUT_MS)
-        ),
-      ]);
+      });
+      const urlData = await urlRes.json() as { uploadUrl?: string; error?: string };
+      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
+      const { uploadUrl } = urlData;
 
-      const blob = await uploadWithTimeout;
+      // ── Step 1b: Upload the file directly from the browser to Gemini ─────
+      // The video never touches Vercel — it goes straight from browser → Gemini.
+      const uploadRes = await fetch(uploadUrl!, {
+        method: "POST",
+        headers: {
+          "X-Goog-Upload-Offset": "0",
+          "X-Goog-Upload-Command": "upload, finalize",
+        },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        throw new Error(`Gemini upload failed (${uploadRes.status}): ${await uploadRes.text()}`);
+      }
+
+      const uploadData = await uploadRes.json() as { file: { name: string } };
+      const fileName = uploadData.file.name; // e.g. "files/abc123"
       setUploadProgress(100);
-      setStepStatus("blob_upload", "done");
+      setStepStatus("upload", "done");
 
-      // ── Step 2: Send just the blob URL to /api/analyze — the server streams it to Gemini
+      // ── Step 2: Send just the file name to /api/analyze and stream back ──
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blobUrl: blob.url, mimeType: file.type, prompt, description }),
+        body: JSON.stringify({ fileName, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {
-        const text = await res.text();
-        throw new Error(text || "Request failed");
+        throw new Error((await res.text()) || "Analysis request failed");
       }
 
       const reader = res.body.getReader();
@@ -135,23 +145,12 @@ export default function Home() {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6);
-          if (data === "[DONE]") {
-            setStepStatus("extract", "done");
-            setPhase("done");
-            continue;
-          }
+          if (data === "[DONE]") { setPhase("done"); continue; }
           try {
             const parsed = JSON.parse(data);
-            if (parsed.step) {
-              const { id, status } = parsed.step as { id: string; status: Step["status"] };
-              setStepStatus(id, status);
-            }
-            if (parsed.chunk) {
-              setResult((prev) => prev + parsed.chunk);
-            }
-            if (parsed.error) {
-              throw new Error(parsed.error);
-            }
+            if (parsed.step) setStepStatus(parsed.step.id, parsed.step.status);
+            if (parsed.chunk) setResult((prev) => prev + parsed.chunk);
+            if (parsed.error) throw new Error(parsed.error);
           } catch (e) {
             if (e instanceof SyntaxError) continue;
             throw e;
@@ -182,7 +181,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <div className="max-w-2xl mx-auto space-y-8">
-        {/* Header */}
+
         <div className="text-center space-y-2 pt-8">
           <h1 className="text-3xl font-bold tracking-tight">Prompt Extractor</h1>
           <p className="text-zinc-400 text-sm">
@@ -280,7 +279,7 @@ export default function Home() {
           )}
         </button>
 
-        {/* Processing steps */}
+        {/* Progress steps */}
         {phase === "processing" && (
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Progress</p>
@@ -297,17 +296,13 @@ export default function Home() {
                     <span className="block w-[15px] h-[15px] rounded-full border border-zinc-700" />
                   )}
                 </span>
-                <span
-                  className={`text-sm ${
-                    step.status === "done"
-                      ? "text-zinc-300"
-                      : step.status === "active"
-                      ? "text-zinc-100"
-                      : "text-zinc-600"
-                  }`}
-                >
+                <span className={`text-sm ${
+                  step.status === "done" ? "text-zinc-300"
+                  : step.status === "active" ? "text-zinc-100"
+                  : "text-zinc-600"
+                }`}>
                   {step.label}
-                  {step.id === "blob_upload" && step.status === "active" && uploadProgress > 0 && (
+                  {step.id === "upload" && step.status === "active" && uploadProgress > 0 && (
                     <span className="ml-2 text-violet-400 text-xs">{uploadProgress}%</span>
                   )}
                 </span>
@@ -320,11 +315,11 @@ export default function Home() {
         {phase === "error" && (
           <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start gap-3">
             <X size={16} className="text-red-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
+            <div className="space-y-1 flex-1 min-w-0">
               <p className="text-sm font-medium text-red-300">Analysis failed</p>
-              <p className="text-xs text-red-400/80">{errorMsg}</p>
+              <p className="text-xs text-red-400/80 break-words">{errorMsg}</p>
             </div>
-            <button onClick={reset} className="ml-auto text-xs text-red-400 hover:text-red-200 transition-colors">
+            <button onClick={reset} className="text-xs text-red-400 hover:text-red-200 transition-colors shrink-0">
               Try again
             </button>
           </div>
