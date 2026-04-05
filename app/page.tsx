@@ -84,28 +84,48 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: POST raw file to /api/upload (Edge runtime — no payload limit,
-      //            no CORS issue, streams straight through to Gemini) ──────────
+      // ── Step 1: Get a Gemini resumable upload URL (API key stays server-side) ──
       setStepStatus("upload", "active");
 
-      const uploadRes = await fetch("/api/upload", {
+      const urlRes = await fetch("/api/get-upload-url", {
         method: "POST",
-        headers: {
-          "x-mime-type":    file.type,
-          "x-file-size":    String(file.size),
-          "x-display-name": file.name,
-          "content-type":   file.type,
-        },
-        body: file,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mimeType: file.type, displayName: file.name, fileSize: file.size }),
       });
-      const uploadData = await uploadRes.json() as { file?: { name: string }; error?: string };
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed");
+      const urlData = await urlRes.json() as { uploadUrl?: string; error?: string };
+      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
 
-      const fileName = uploadData.file!.name;
+      // ── Step 2: Upload directly from the browser to Gemini — no Vercel body limit ──
+      const fileName = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", urlData.uploadUrl!);
+        xhr.setRequestHeader("X-Goog-Upload-Offset", "0");
+        xhr.setRequestHeader("X-Goog-Upload-Command", "upload, finalize");
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable)
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText) as { file: { name: string } };
+              resolve(data.file.name);
+            } catch {
+              reject(new Error("Invalid response from Gemini after upload"));
+            }
+          } else {
+            reject(new Error(`Upload failed (${xhr.status}) — ${xhr.responseText}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload — check your connection"));
+        xhr.send(file);
+      });
+
       setUploadProgress(100);
       setStepStatus("upload", "done");
 
-      // ── Step 2: Send just the file name to /api/analyze and stream back ──
+      // ── Step 3: Send just the file name to /api/analyze and stream back ──
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,7 +238,7 @@ export default function Home() {
               <UploadCloud className="mx-auto text-zinc-500" size={36} />
               <div>
                 <p className="font-medium">Drop your video here</p>
-                <p className="text-zinc-500 text-sm mt-1">MP4, MOV, WebM &middot; up to 2 GB</p>
+                <p className="text-zinc-500 text-sm mt-1">MP4, MOV, WebM &middot; up to 2 GB (Gemini limit)</p>
               </div>
               <p className="text-xs text-zinc-600">or click to browse</p>
             </div>
