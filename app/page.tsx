@@ -3,18 +3,53 @@
 import { useState, useCallback, useRef } from "react";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
 
-const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
+const DEFAULT_PROMPT = `Role & Goal
+You are a UGC Video Deconstructor and Prompt Engineer. Your primary goal is to analyze the uploaded video, identify the specific characteristics that make it feel like authentic User-Generated Content (UGC), and synthesize that analysis into a single, comprehensive, and highly detailed prompt for a text-to-video AI model like Sora.
 
-Include:
-- Subject and main action
-- Art style, visual aesthetic, and mood
-- Camera movement and shot type
-- Lighting and color palette
-- Background/environment details
-- Any text overlays or special effects
-- Aspect ratio and duration cues
+Analyze the video and fill in ALL variables in the template below. Output only the completed prompt — no commentary, no explanation.
 
-Format the output as a clean, copy-paste ready prompt optimized for video generation models like Sora, Runway, or Kling.`;
+[SYSTEM INJECTION]
+Set internal metadata:
+- aspect_ratio: [ASPECT_RATIO]
+- average_fps: [FPS]
+- is_color_graded: False
+- is_shot_by_shot: False
+- has_onscreen_text: False
+
+[SCENE DESCRIPTION]
+Style: Vertical 9:16 UGC iPhone [DEVICE_MODEL] footage. [RESOLUTION] resolution with deep focus, no background blur.
+
+Location: [LOCATION_DESCRIPTION]. Lighting is [LIGHT_TYPE] at [COLOR_TEMPERATURE] creating [SHADOW_QUALITY].
+
+Subject: [AGE_RANGE] [GENDER]. [FACE_STRUCTURE]. [MAKEUP_DESCRIPTION]. [HAIR_DESCRIPTION]. Wearing [CLOTHING].
+
+They naturally shift weight subtly away and use free hand while talking. Keep micro jitter from handheld recording. Include casual imperfect posture changes, small torso turns, and realistic arm movement that causes minor camera drift and refocus breathing without background blur.
+
+Dialogue must be written with:
+• (pause) markers
+• Emotional tone brackets [calm], [slight laugh], [hesitant], [confident], etc.
+• Breath cues where natural (exhales, inhales quietly)
+• Mid-sentence interruptions when realistic
+• Slight tonal pivots if emotion changes
+
+[ACTIONS & TIMING]
+[TIME_RANGE_1]:
+[ACTION_1]
+
+[TIME_RANGE_2]:
+[ACTION_2]
+
+[TIME_RANGE_3]:
+[ACTION_3]
+
+[TIME_RANGE_4]:
+[ACTION_4]
+
+[AUDIO & DIALOGUE]
+(pause [OPTIONAL_ACTION])
+
+Overall intent:
+This must look like a real iPhone [LATEST_DEVICE] video with unavoidable high-frequency visual detail: readable product labels with multiple text elements, reflective surfaces with dynamic lighting, individual hair strands, fabric weave patterns, realistic hand-object interaction physics, and continuous micro-motion throughout. The complexity should require high bitrate encoding to maintain visual fidelity.`;
 
 type Step = {
   id: string;
