@@ -1,44 +1,35 @@
-import { NextRequest } from "next/server";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const ALLOWED = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 
-export async function POST(req: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return Response.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
+const r2 = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId:     process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
 
-  const { mimeType, displayName, fileSize } = await req.json() as {
-    mimeType: string;
-    displayName: string;
-    fileSize: number;
-  };
+export async function POST(req: Request): Promise<Response> {
+  const { mimeType, fileName } = await req.json() as { mimeType: string; fileName: string };
 
   if (!ALLOWED.has(mimeType)) {
-    return Response.json({ error: "Invalid mime type" }, { status: 400 });
+    return Response.json({ error: "Invalid video type" }, { status: 400 });
   }
 
-  // Initiate a Gemini resumable upload session — returns a session URL the browser
-  // can POST the raw file bytes to directly. API key stays server-side.
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: {
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-        "X-Goog-Upload-Header-Content-Length": String(fileSize),
-        "X-Goog-Upload-Header-Content-Type": mimeType,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ file: { display_name: displayName || "video" } }),
-    }
+  const key = `uploads/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+
+  const url = await getSignedUrl(
+    r2,
+    new PutObjectCommand({
+      Bucket:      process.env.R2_BUCKET_NAME!,
+      Key:         key,
+      ContentType: mimeType,
+    }),
+    { expiresIn: 3600 }
   );
 
-  if (!res.ok) {
-    return Response.json({ error: `Gemini error: ${await res.text()}` }, { status: res.status });
-  }
-
-  const uploadUrl = res.headers.get("X-Goog-Upload-URL");
-  if (!uploadUrl) return Response.json({ error: "No upload URL returned by Gemini" }, { status: 502 });
-
-  return Response.json({ uploadUrl });
+  return Response.json({ uploadUrl: url, key });
 }

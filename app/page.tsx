@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { upload } from "@vercel/blob/client";
 import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
 
 const DEFAULT_PROMPT = `Analyze this video carefully and extract or reconstruct the exact prompt(s) used to generate it if it appears to be AI-generated, or describe what a precise generative AI prompt would need to look like to recreate this video.
@@ -85,26 +84,43 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Upload directly to Vercel Blob CDN (bypasses Vercel body limit) ──
+      // ── Step 1: Get pre-signed R2 upload URL from server ─────────────────
       setStepStatus("upload", "active");
 
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-        clientPayload: file.type,
-        onUploadProgress: ({ percentage }) => {
-          setUploadProgress(Math.round(percentage));
-        },
+      const urlRes = await fetch("/api/get-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mimeType: file.type, fileName: file.name }),
+      });
+      const urlData = await urlRes.json() as { uploadUrl?: string; key?: string; error?: string };
+      if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
+
+      // ── Step 2: PUT file directly to R2 (browser → Cloudflare, no Vercel limit) ──
+      const r2Key = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", urlData.uploadUrl!);
+        xhr.setRequestHeader("Content-Type", file.type);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable)
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(urlData.key!);
+          else reject(new Error(`R2 upload failed (${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.send(file);
       });
 
       setUploadProgress(100);
       setStepStatus("upload", "done");
 
-      // ── Step 2: Send blob URL to /api/analyze — server uploads to Gemini + streams back ──
+      // ── Step 3: Send R2 key to /api/analyze — server downloads + uploads to Gemini ──
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blobUrl: blob.url, mimeType: file.type, prompt, description }),
+        body: JSON.stringify({ r2Key, mimeType: file.type, prompt, description }),
       });
 
       if (!res.ok || !res.body) {

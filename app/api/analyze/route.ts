@@ -6,7 +6,8 @@ import {
   Part,
 } from "@google/generative-ai";
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
-import { del } from "@vercel/blob";
+import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const maxDuration = 300;
 
@@ -20,47 +21,66 @@ function stepEvent(id: string, status: "pending" | "active" | "done" | "error"):
   return sse({ step: { id, status } });
 }
 
+function makeR2Client() {
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId:     process.env.R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (chunk: Uint8Array) => controller.enqueue(chunk);
-      let blobUrl: string | undefined;
+      let r2Key: string | undefined;
       let geminiFileName: string | undefined;
 
       try {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
 
-        const { blobUrl: incomingBlobUrl, mimeType, prompt: userPrompt, description } =
+        const { r2Key: incomingKey, mimeType, prompt: userPrompt, description } =
           await req.json() as {
-            blobUrl: string;
+            r2Key: string;
             mimeType: string;
             prompt?: string;
             description?: string;
           };
 
-        if (!incomingBlobUrl) throw new Error("Missing blobUrl");
-        if (!mimeType) throw new Error("Missing mimeType");
-        blobUrl = incomingBlobUrl;
+        if (!incomingKey) throw new Error("Missing r2Key");
+        if (!mimeType)    throw new Error("Missing mimeType");
+        r2Key = incomingKey;
 
-        // ── Step 1: Download from Vercel Blob and upload to Gemini Files API ──
+        // ── Step 1: Download from R2 and upload to Gemini Files API ───────────
         send(stepEvent("process", "active"));
 
-        const blobResponse = await fetch(blobUrl);
-        if (!blobResponse.ok) throw new Error("Failed to download video from storage");
-        const fileBuffer = await blobResponse.arrayBuffer();
-        const fileSize = fileBuffer.byteLength;
+        const r2 = makeR2Client();
+        const signedGetUrl = await getSignedUrl(
+          r2,
+          new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: r2Key }),
+          { expiresIn: 3600 }
+        );
 
+        const r2Response = await fetch(signedGetUrl);
+        if (!r2Response.ok) throw new Error("Failed to download video from R2");
+        const fileBuffer = await r2Response.arrayBuffer();
+        const fileSize   = fileBuffer.byteLength;
+
+        // Initiate Gemini resumable upload
         const initRes = await fetch(
           `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
           {
             method: "POST",
             headers: {
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
+              "X-Goog-Upload-Protocol":            "resumable",
+              "X-Goog-Upload-Command":             "start",
               "X-Goog-Upload-Header-Content-Length": String(fileSize),
               "X-Goog-Upload-Header-Content-Type": mimeType,
-              "Content-Type": "application/json",
+              "Content-Type":                      "application/json",
             },
             body: JSON.stringify({ file: { display_name: "video" } }),
           }
@@ -73,7 +93,7 @@ export async function POST(req: NextRequest) {
         const geminiRes = await fetch(uploadUrl, {
           method: "POST",
           headers: {
-            "X-Goog-Upload-Offset": "0",
+            "X-Goog-Upload-Offset":  "0",
             "X-Goog-Upload-Command": "upload, finalize",
           },
           body: fileBuffer,
@@ -83,8 +103,10 @@ export async function POST(req: NextRequest) {
         const { file: geminiFile } = await geminiRes.json() as { file: { name: string; uri: string } };
         geminiFileName = geminiFile.name;
 
-        del(blobUrl, { token: process.env.BLOB2_READ_WRITE_TOKEN }).catch(() => undefined);
-        blobUrl = undefined;
+        // Delete from R2 — no longer needed
+        r2.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: r2Key }))
+          .catch(() => undefined);
+        r2Key = undefined;
 
         // ── Step 2: Poll until Gemini file is ACTIVE ──────────────────────────
         const fileManager = new GoogleAIFileManager(apiKey);
@@ -136,7 +158,11 @@ export async function POST(req: NextRequest) {
         fileManager.deleteFile(geminiFileName).catch(() => undefined);
       } catch (err) {
         send(sse({ error: err instanceof Error ? err.message : String(err) }));
-        if (blobUrl) del(blobUrl, { token: process.env.BLOB2_READ_WRITE_TOKEN }).catch(() => undefined);
+        if (r2Key) {
+          const r2 = makeR2Client();
+          r2.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: r2Key }))
+            .catch(() => undefined);
+        }
         if (geminiFileName) {
           const apiKey = process.env.GEMINI_API_KEY;
           if (apiKey) new GoogleAIFileManager(apiKey).deleteFile(geminiFileName).catch(() => undefined);
@@ -151,7 +177,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      Connection:      "keep-alive",
     },
   });
 }
