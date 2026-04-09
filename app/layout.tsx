@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ClerkProvider afterSignOutUrl="/sign-in">
+        <ClerkProvider afterSignOutUrl="/">
           {children}
         </ClerkProvider>
       </body>
