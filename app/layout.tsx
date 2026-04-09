@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -14,8 +15,23 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Prompt Extractor",
-  description: "Extract prompts from video using Gemini AI",
+  title: "Prompt Please — UGC Video Deconstructor",
+  description:
+    "Upload any UGC video and instantly extract a high-fidelity AI generation prompt for Sora, Kling, or Runway.",
+  metadataBase: new URL("https://promptplease.app"),
+  openGraph: {
+    title: "Prompt Please — UGC Video Deconstructor",
+    description:
+      "Upload any UGC video and instantly extract a high-fidelity AI generation prompt for Sora, Kling, or Runway.",
+    type: "website",
+    url: "https://promptplease.app",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Prompt Please — UGC Video Deconstructor",
+    description:
+      "Upload any UGC video and instantly extract a high-fidelity AI generation prompt for Sora, Kling, or Runway.",
+  },
 };
 
 export default function RootLayout({
@@ -25,10 +41,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ClerkProvider afterSignOutUrl="/sign-in">
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

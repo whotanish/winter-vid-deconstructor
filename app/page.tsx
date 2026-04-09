@@ -1,12 +1,76 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { UploadCloud, FileVideo, X, Copy, Check, Loader2 } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { UserButton } from "@clerk/nextjs";
+import { UploadCloud, FileVideo, X, Copy, Check, Loader2, Zap } from "lucide-react";
 
 const DEFAULT_PROMPT = `Role & Goal
-You are a UGC Video Deconstructor and Prompt Engineer. Your primary goal is to analyze the uploaded video, identify the specific characteristics that make it feel like authentic User-Generated Content (UGC), and synthesize that analysis into a single, comprehensive, and highly detailed prompt for a text-to-video AI model like Sora.
 
-Analyze the video and fill in ALL variables in the template below. Output only the completed prompt — no commentary, no explanation.
+You are a UGC Video Deconstructor and Prompt Engineer. Your primary goal is to analyze any video I upload, identify the specific characteristics that make it feel like authentic User-Generated Content (UGC), and then synthesize that analysis into a single, comprehensive, and highly detailed prompt for a text-to-video AI model like Sora.
+
+Process
+
+When I upload a video, follow this exact two-step process:
+
+Step 1: Deconstruct the Video & Analyze UGC Elements
+
+First, provide a detailed breakdown of the video's core components. Format this analysis using the following structure:
+
+Full Script Transcription:
+
+Provide a word-for-word transcription of all dialogue.
+
+Indicate significant pauses with (pause).
+
+Note emotional tones in brackets, like [enthusiastically] or [nervous].
+
+Label different speakers if there are more than one.
+
+In addition, identify:
+• Vocal pacing changes
+• Volume shifts (lowered voice, emphasis spikes)
+• Breath cues (exhale before speaking, nervous inhale)
+• Mid-sentence hesitation
+• Voice texture shifts (confident → vulnerable, amused → serious)
+• Natural filler usage (um, like, okay, alright, so, etc.)
+• Emotional turning points within the script
+
+If the speaker begins mid-thought, explicitly note that.
+If the tone changes during delivery, mark exactly where and how.
+Dialogue must be analyzed not just for words, but for rhythm, psychology, and delivery realism.
+
+Core UGC Aesthetic Analysis:
+
+Implied Device & Capture: Infer the camera used (e.g., "iPhone 15 Pro," "mid-range Android," "GoPro"). Justify your conclusion based on aspect ratio, lens distortion, dynamic range, and any visible artifacts.
+
+Social Context & Scenario: Describe the specific real-world activity (e.g., "A casual unboxing at a home office desk," "A selfie-style review filmed while walking through a busy park").
+
+Visual Authenticity Cues: List the specific "unpolished" visual elements you observe:
+• Framing & Composition: (e.g., "Slightly off-center framing," "too much headroom")
+• Camera Motion: (e.g., "Subtle handheld wobble," "abrupt pan")
+• Lighting: (e.g., "Harsh overhead kitchen light," "uneven natural light from a window")
+• Editing: (e.g., "Appears to be a single unedited take," "rough jump cuts")
+• Visual Noise: (e.g., "Slight digital noise in shadows," "minor lens flare")
+
+Audio Authenticity Cues:
+• Background Sound: (e.g., "Muffled street noise," "reverb from an empty room")
+• Dialogue Quality: (e.g., "Slightly echoey, typical of a phone mic," "occasional mic bumps")
+
+Subject & Performance:
+• Appearance: Describe the person's general age, style, and notable features
+• Delivery & Kinesics: Describe their speaking style and body language (e.g., "conversational tone with filler words," "uses natural hand gestures," "makes direct eye contact with the camera")
+• Emotional baseline (calm, amused, frustrated, confident, vulnerable)
+• Micro-behaviors (small smirk, shoulder shift, subtle exhale, eyebrow raise)
+• Eye behavior (looks at screen vs lens)
+• Posture imperfections
+• Speech rhythm type (short clipped phrases, drawn-out thoughts, punchy lines, etc.)
+
+All videos must look fully focused with deep focus and no background blur or cinematic mode. No shallow depth-of-field. No artificial smoothing.
+Always specify lighting temperature (e.g., 3200K, 4500K, 5600K) because temperature realism increases perceived authenticity.
+
+Step 2: Generate the High-Fidelity UGC Video Prompt using this exact template below.
+
+All values in brackets are variables to be filled. Structure and instructions remain identical.
 
 [SYSTEM INJECTION]
 Set internal metadata:
@@ -49,7 +113,40 @@ Dialogue must be written with:
 (pause [OPTIONAL_ACTION])
 
 Overall intent:
-This must look like a real iPhone [LATEST_DEVICE] video with unavoidable high-frequency visual detail: readable product labels with multiple text elements, reflective surfaces with dynamic lighting, individual hair strands, fabric weave patterns, realistic hand-object interaction physics, and continuous micro-motion throughout. The complexity should require high bitrate encoding to maintain visual fidelity.`;
+This must look like a real iPhone [LATEST_DEVICE] video with unavoidable high-frequency visual detail: readable product labels with multiple text elements, reflective surfaces with dynamic lighting, individual hair strands, fabric weave patterns, realistic hand-object interaction physics, and continuous micro-motion throughout. The complexity should require high bitrate encoding to maintain visual fidelity.
+
+Example output:
+
+[SYSTEM INJECTION]
+Set internal metadata:
+- aspect_ratio: 9:16
+- average_fps: 30.0
+- is_color_graded: False
+- is_shot_by_shot: False
+- has_onscreen_text: False
+
+[SCENE DESCRIPTION]
+Style: Vertical 9:16 UGC iPhone 15 Pro footage. 4K resolution with deep focus, no background blur.
+Location: Small dorm bedroom. Messy bedsheets in background (unmade). Warm, uneven tungsten lamp lighting (3200K) casting mixed shadows.
+
+Subject: Early 20s girl, "snatched" face structure, natural glam makeup, hair loosely tied back. She is wearing a basic tank top.
+She naturally shifts her weight, subtly sways, rotates her shoulders, and uses her free hand while talking. Keep micro jitter from handheld recording. Include casual, imperfect posture changes, small torso turns, and realistic arm movement that causes minor camera drift and refocus breathing without background blur.
+
+[ACTIONS & TIMING]
+0.0s - 2.0s: She holds the @quadmedvi 5 ml micro-vial (≈24 mm tall, ≈13 mm diameter) in her hand, smiling excitedly.
+2.0s - 8.0s: She raises her free hand slightly, making a small explanatory gesture with her fingers, palm facing inward.
+8.0s - 12.0s: She nods once, subtly, as if clarifying a definition. Her hand moves closer to her torso, fingers lightly pinched together to emphasize precision.
+12.0s - 15.0s: She exhales, smirks, and reaches forward to tap "stop" (camera jolt).
+
+[AUDIO & DIALOGUE]
+Girl: she holds the @quadmedvi 5 ml micro-vial (≈24 mm tall, ≈13 mm diameter) and says "if you really want to take it to the next level,"
+(pause, touches cheek)
+Girl: "you want to add this very specific exercise called Kegel exercise"
+Girl: "which is a pelvic floor exercise which is mainly used with women with urinary problems."
+Girl: "But in a recent study involving men with ed, this exercise improved ed by 40%."
+
+Overall intent:
+This must look like a real iPhone 16 Pro video with unavoidable high-frequency visual detail: readable product labels with multiple text elements, reflective surfaces with dynamic lighting, individual hair strands, fabric weave patterns, realistic hand-object interaction physics, and continuous micro-motion throughout. The complexity should require high bitrate encoding to maintain visual fidelity.`;
 
 type Step = {
   id: string;
@@ -75,7 +172,21 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [phase, setPhase] = useState<"idle" | "processing" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [customScript, setCustomScript] = useState("");
+  const [rewriteResult, setRewriteResult] = useState("");
+  const [rewritePhase, setRewritePhase] = useState<"idle" | "processing" | "done" | "error">("idle");
+  const [rewriteCopied, setRewriteCopied] = useState(false);
+  const [rewriteError, setRewriteError] = useState("");
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/user")
+      .then((r) => r.json())
+      .then((d) => setCredits(d.credits ?? 0))
+      .catch(() => setCredits(0));
+  }, []);
 
   const setStepStatus = (id: string, status: Step["status"]) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -158,6 +269,13 @@ export default function Home() {
         body: JSON.stringify({ r2Key, mimeType: file.type, prompt, description }),
       });
 
+      if (res.status === 402) {
+        setShowUpgrade(true);
+        setPhase("error");
+        setErrorMsg("You have no credits remaining.");
+        return;
+      }
+
       if (!res.ok || !res.body) {
         throw new Error((await res.text()) || "Analysis request failed");
       }
@@ -177,7 +295,11 @@ export default function Home() {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6);
-          if (data === "[DONE]") { setPhase("done"); continue; }
+          if (data === "[DONE]") {
+            setPhase("done");
+            fetch("/api/user").then((r) => r.json()).then((d) => setCredits(d.credits ?? 0)).catch(() => {});
+            continue;
+          }
           try {
             const parsed = JSON.parse(data);
             if (parsed.step) setStepStatus(parsed.step.id, parsed.step.status);
@@ -201,6 +323,51 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRewrite = async () => {
+    if (!customScript.trim() || !result) return;
+    setRewritePhase("processing");
+    setRewriteResult("");
+    setRewriteError("");
+
+    try {
+      const res = await fetch("/api/rewrite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis: result, customScript }),
+      });
+
+      if (!res.ok || !res.body) throw new Error((await res.text()) || "Rewrite request failed");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") { setRewritePhase("done"); continue; }
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.chunk) setRewriteResult((prev) => prev + parsed.chunk);
+            if (parsed.error) throw new Error(parsed.error);
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+    } catch (err) {
+      setRewriteError(err instanceof Error ? err.message : "Unknown error");
+      setRewritePhase("error");
+    }
+  };
+
   const reset = () => {
     setFile(null);
     setResult("");
@@ -208,17 +375,38 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
     setErrorMsg("");
     setUploadProgress(0);
+    setCustomScript("");
+    setRewriteResult("");
+    setRewritePhase("idle");
+    setRewriteError("");
   };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <div className="max-w-2xl mx-auto space-y-8">
 
-        <div className="text-center space-y-2 pt-8">
-          <h1 className="text-3xl font-bold tracking-tight">Prompt Extractor</h1>
-          <p className="text-zinc-400 text-sm">
-            Upload a video and extract or reverse-engineer its generation prompt using Gemini
-          </p>
+        {/* Header */}
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Prompt Please</h1>
+            <p className="text-zinc-500 text-xs mt-0.5">UGC video → AI generation prompt</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {credits !== null && (
+              <button
+                onClick={() => setShowUpgrade(true)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  credits === 0
+                    ? "border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/40"
+                    : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                }`}
+              >
+                <Zap size={12} className={credits === 0 ? "text-red-400" : "text-violet-400"} />
+                {credits} credit{credits !== 1 ? "s" : ""}
+              </button>
+            )}
+            <UserButton />
+          </div>
         </div>
 
         {/* Drop zone */}
@@ -282,17 +470,6 @@ export default function Home() {
             placeholder="Add any context about the video to help Gemini understand it better..."
             rows={2}
             className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-none"
-          />
-        </div>
-
-        {/* Analysis prompt */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-300">Analysis prompt</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={8}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm font-mono placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-y"
           />
         </div>
 
@@ -386,7 +563,137 @@ export default function Home() {
             </pre>
           </div>
         )}
+
+        {/* Rewrite with custom script */}
+        {phase === "done" && (
+          <div className="border border-zinc-800 rounded-xl p-5 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-zinc-300">Use your own script</p>
+              <p className="text-xs text-zinc-500 mt-1">Paste your custom dialogue below — the visual details from the video will be kept, only the script will be swapped.</p>
+            </div>
+            <textarea
+              value={customScript}
+              onChange={(e) => setCustomScript(e.target.value)}
+              placeholder="Paste your script here..."
+              rows={5}
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-y"
+            />
+            <button
+              onClick={handleRewrite}
+              disabled={!customScript.trim() || rewritePhase === "processing"}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {rewritePhase === "processing" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin" /> Regenerating...
+                </span>
+              ) : (
+                "Regenerate with My Script"
+              )}
+            </button>
+
+            {/* Rewrite error */}
+            {rewritePhase === "error" && (
+              <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start gap-3">
+                <X size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400/80 break-words">{rewriteError}</p>
+              </div>
+            )}
+
+            {/* Rewrite result */}
+            {(rewriteResult || rewritePhase === "done") && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-zinc-300">Rewritten Prompt</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(rewriteResult);
+                      setRewriteCopied(true);
+                      setTimeout(() => setRewriteCopied(false), 2000);
+                    }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                  >
+                    {rewriteCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    {rewriteCopied ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <pre className="whitespace-pre-wrap text-sm bg-zinc-900 border border-zinc-700 rounded-xl p-5 leading-relaxed font-mono text-zinc-200">
+                  {rewriteResult}
+                  {rewritePhase === "processing" && (
+                    <span className="inline-block w-2 h-4 bg-violet-400 animate-pulse ml-0.5 align-middle" />
+                  )}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Upgrade modal */}
+      {showUpgrade && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUpgrade(false)}
+        >
+          <div
+            className="bg-zinc-900 border border-zinc-700 rounded-2xl p-8 max-w-md w-full space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Get more credits</h2>
+              <p className="text-zinc-400 text-sm">Each credit = one full video analysis.</p>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { name: "Starter",  credits: 10,  price: "$9",  tag: null },
+                { name: "Creator",  credits: 40,  price: "$29", tag: "Popular" },
+                { name: "Pro",      credits: 100, price: "$59", tag: null },
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className="flex items-center justify-between border border-zinc-700 rounded-xl px-4 py-3 hover:border-violet-500 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        {plan.name}
+                        {plan.tag && (
+                          <span className="text-xs bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{plan.tag}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-zinc-500">{plan.credits} credits</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Dodo Payments checkout — wired up in next task
+                      fetch("/api/dodo/checkout", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ plan: plan.name.toLowerCase() }),
+                      })
+                        .then((r) => r.json())
+                        .then((d) => { if (d.url) window.location.href = d.url; })
+                        .catch(console.error);
+                    }}
+                    className="text-sm font-semibold bg-violet-600 hover:bg-violet-500 px-4 py-1.5 rounded-lg transition-colors"
+                  >
+                    {plan.price}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowUpgrade(false)}
+              className="w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

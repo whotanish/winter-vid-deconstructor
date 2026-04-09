@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   GoogleGenerativeAI,
   HarmCategory,
@@ -8,8 +9,15 @@ import {
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { upsertUser, deductCredit } from "@/lib/db";
 
 export const maxDuration = 300;
+
+const ANALYSIS_PROMPT = `Analyze the uploaded video and replicate it as close to 1:1 as possible. If the video is longer than 15 seconds, extract all constant elements into ONE base prompt, then split the video into multiple 15-second segments.
+
+If any additional details are needed to ensure perfect replication, add them freely.
+
+In the BASE PROMPT, describe the character as detailed as possible (appearance, age, clothing, posture, facial features, micro-expressions, movement style).`;
 
 const enc = new TextEncoder();
 
@@ -33,6 +41,23 @@ function makeR2Client() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── Auth + credit gate ────────────────────────────────────────────────────
+  const { userId } = await auth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
+  await upsertUser(userId, email);
+
+  const user = await deductCredit(userId);
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: "No credits remaining. Please upgrade your plan." }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const stream = new ReadableStream({
     async start(controller) {
       const send = (chunk: Uint8Array) => controller.enqueue(chunk);
@@ -128,6 +153,7 @@ export async function POST(req: NextRequest) {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-3.1-pro-preview",
+          systemInstruction: userPrompt || "Analyze this video.",
           safetySettings: [
             { category: HarmCategory.HARM_CATEGORY_HARASSMENT,        threshold: HarmBlockThreshold.BLOCK_NONE },
             { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,       threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -137,8 +163,8 @@ export async function POST(req: NextRequest) {
         });
 
         const parts: Part[] = [{ fileData: { mimeType, fileUri: fileInfo.uri } }];
-        if (description) parts.push({ text: `Video description: ${description}\n\n` });
-        parts.push({ text: userPrompt || "Analyze this video." });
+        if (description) parts.push({ text: `Video description: ${description}` });
+        parts.push({ text: ANALYSIS_PROMPT });
 
         const streamResult = await model.generateContentStream({
           contents: [{ role: "user", parts }],

@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -13,6 +14,9 @@ const r2 = new S3Client({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { mimeType, fileName } = await req.json() as { mimeType: string; fileName: string };
 
   if (!ALLOWED.has(mimeType)) {

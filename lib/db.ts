@@ -1,0 +1,94 @@
+import { neon } from "@neondatabase/serverless";
+
+function getDb() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not configured");
+  return neon(url);
+}
+
+export type Plan = "free" | "creator" | "pro" | "agency";
+
+export interface UserRecord {
+  id: string;
+  email: string;
+  credits: number;
+  plan: Plan;
+  created_at: string;
+}
+
+/** Ensure the users table exists (run once at startup / migration time) */
+export async function runMigrations() {
+  const sql = getDb();
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id          TEXT PRIMARY KEY,
+      email       TEXT NOT NULL,
+      credits     INTEGER NOT NULL DEFAULT 3,
+      plan        TEXT NOT NULL DEFAULT 'free',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
+/**
+ * Get a user record. Returns null if not found.
+ */
+export async function getUser(clerkUserId: string): Promise<UserRecord | null> {
+  const sql = getDb();
+  const rows = await sql`
+    SELECT id, email, credits, plan, created_at
+    FROM users
+    WHERE id = ${clerkUserId}
+    LIMIT 1
+  `;
+  return (rows[0] as UserRecord) ?? null;
+}
+
+/**
+ * Upsert a user (create on first sign-in with 3 free credits, no-op if already exists).
+ */
+export async function upsertUser(clerkUserId: string, email: string): Promise<UserRecord> {
+  const sql = getDb();
+  const rows = await sql`
+    INSERT INTO users (id, email, credits, plan)
+    VALUES (${clerkUserId}, ${email}, 3, 'free')
+    ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
+    RETURNING id, email, credits, plan, created_at
+  `;
+  return rows[0] as UserRecord;
+}
+
+/**
+ * Deduct one credit atomically. Returns the updated record, or null if the user
+ * has 0 credits (caller should return 402).
+ */
+export async function deductCredit(clerkUserId: string): Promise<UserRecord | null> {
+  const sql = getDb();
+  const rows = await sql`
+    UPDATE users
+    SET credits = credits - 1
+    WHERE id = ${clerkUserId} AND credits > 0
+    RETURNING id, email, credits, plan, created_at
+  `;
+  return (rows[0] as UserRecord) ?? null;
+}
+
+/**
+ * Add credits to a user (called from payment webhook).
+ */
+export async function addCredits(clerkUserId: string, amount: number, plan?: Plan): Promise<void> {
+  const sql = getDb();
+  if (plan) {
+    await sql`
+      UPDATE users
+      SET credits = credits + ${amount}, plan = ${plan}
+      WHERE id = ${clerkUserId}
+    `;
+  } else {
+    await sql`
+      UPDATE users
+      SET credits = credits + ${amount}
+      WHERE id = ${clerkUserId}
+    `;
+  }
+}
