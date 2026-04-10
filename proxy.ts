@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/migrate(.*)",
+  "/api/dodo/webhook(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

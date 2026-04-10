@@ -16,7 +16,7 @@ export interface UserRecord {
   created_at: string;
 }
 
-/** Ensure the users table exists (run once at startup / migration time) */
+/** Ensure tables exist (run once at startup / migration time) */
 export async function runMigrations() {
   const sql = getDb();
   await sql`
@@ -25,6 +25,18 @@ export async function runMigrations() {
       email       TEXT NOT NULL,
       credits     INTEGER NOT NULL DEFAULT 3,
       plan        TEXT NOT NULL DEFAULT 'free',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL REFERENCES users(id),
+      plan        TEXT NOT NULL,
+      credits     INTEGER NOT NULL,
+      amount      INTEGER NOT NULL,
+      currency    TEXT NOT NULL DEFAULT 'USD',
+      status      TEXT NOT NULL DEFAULT 'succeeded',
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
@@ -91,4 +103,26 @@ export async function addCredits(clerkUserId: string, amount: number, plan?: Pla
       WHERE id = ${clerkUserId}
     `;
   }
+}
+
+/**
+ * Insert an order record (audit trail for payments).
+ * Returns true if the order was newly inserted, false if it already existed (idempotency).
+ */
+export async function insertOrder(
+  paymentId: string,
+  userId: string,
+  plan: string,
+  credits: number,
+  amount: number,
+  currency: string
+): Promise<boolean> {
+  const sql = getDb();
+  const rows = await sql`
+    INSERT INTO orders (id, user_id, plan, credits, amount, currency)
+    VALUES (${paymentId}, ${userId}, ${plan}, ${credits}, ${amount}, ${currency})
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id
+  `;
+  return rows.length > 0;
 }
