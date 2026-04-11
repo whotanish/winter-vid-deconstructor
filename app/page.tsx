@@ -2,9 +2,8 @@ import Link from "next/link";
 import { ArrowRight, Upload, Cpu, Copy, Check, Zap } from "lucide-react";
 
 const PLANS = [
-  { name: "Starter",  credits: 10,  price: "$9",  priceNote: "one-time", popular: false },
-  { name: "Creator",  credits: 40,  price: "$29", priceNote: "one-time", popular: true  },
-  { name: "Pro",      credits: 100, price: "$59", priceNote: "one-time", popular: false },
+  { name: "Weekly",  price: "$9",  priceNote: "/week",  popular: false, desc: "Unlimited video analyses" },
+  { name: "Monthly", price: "$29", priceNote: "/month", popular: true,  desc: "Unlimited video analyses" },
 ];
 
 const STEPS = [
@@ -27,8 +26,8 @@ const STEPS = [
 
 const FAQS = [
   {
-    q: "What is a credit?",
-    a: "One credit = one full video analysis. The rewrite feature (swapping your own script in) is always free once you have an analysis.",
+    q: "How does the subscription work?",
+    a: "Choose weekly ($9/wk) or monthly ($29/mo). You get unlimited video analyses while subscribed. Cancel anytime.",
   },
   {
     q: "How long does analysis take?",
@@ -102,7 +101,7 @@ export default function LandingPage() {
               Already have an account →
             </Link>
           </div>
-          <p className="text-xs text-zinc-600">3 free credits on signup. No credit card required.</p>
+          <p className="text-xs text-zinc-600">Try free first. No credit card required.</p>
         </div>
       </section>
 
@@ -162,10 +161,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 space-y-2">
             <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Pricing</p>
-            <h2 className="text-3xl font-bold">Pay once, no subscription</h2>
-            <p className="text-zinc-500 text-sm">Credits never expire. Start with 3 free on signup.</p>
+            <h2 className="text-3xl font-bold">Unlimited analyses, simple pricing</h2>
+            <p className="text-zinc-500 text-sm">Cancel anytime. Try free first — 3 analyses on signup.</p>
           </div>
-          <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
@@ -178,7 +177,7 @@ export default function LandingPage() {
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-violet-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                      Most popular
+                      Best value
                     </span>
                   </div>
                 )}
@@ -191,7 +190,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-zinc-300">
                   <Zap size={14} className="text-violet-400" />
-                  {plan.credits} video analyses
+                  {plan.desc}
                 </div>
                 <Link
                   href="/sign-up"
@@ -231,7 +230,7 @@ export default function LandingPage() {
       <section className="px-6 py-24 border-t border-zinc-900 text-center">
         <div className="max-w-xl mx-auto space-y-6">
           <h2 className="text-3xl font-bold">Ready to clone any video?</h2>
-          <p className="text-zinc-500 text-sm">Start with 3 free analyses. No credit card needed.</p>
+          <p className="text-zinc-500 text-sm">Unlimited analyses from $9/week. No credit card to start.</p>
           <Link
             href="/sign-up"
             className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 px-8 py-3 rounded-xl font-semibold transition-colors text-sm"

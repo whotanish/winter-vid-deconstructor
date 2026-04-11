@@ -9,7 +9,7 @@ import {
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { upsertUser, deductCredit } from "@/lib/db";
+import { upsertUser, hasActiveSubscription, canAnalyze, deductFreeAnalysis } from "@/lib/db";
 
 export const maxDuration = 300;
 
@@ -41,20 +41,24 @@ function makeR2Client() {
 }
 
 export async function POST(req: NextRequest) {
-  // ── Auth + credit gate ────────────────────────────────────────────────────
+  // ── Auth + subscription gate ──────────────────────────────────────────────
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
   const clerkUser = await currentUser();
   const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
-  await upsertUser(userId, email);
+  const user = await upsertUser(userId, email);
 
-  const user = await deductCredit(userId);
-  if (!user) {
+  if (!canAnalyze(user)) {
     return new Response(
-      JSON.stringify({ error: "No credits remaining. Please upgrade your plan." }),
+      JSON.stringify({ error: "No active subscription. Please subscribe to continue." }),
       { status: 402, headers: { "Content-Type": "application/json" } }
     );
+  }
+
+  // Deduct a free analysis if not subscribed
+  if (!hasActiveSubscription(user)) {
+    await deductFreeAnalysis(userId);
   }
   // ─────────────────────────────────────────────────────────────────────────
 

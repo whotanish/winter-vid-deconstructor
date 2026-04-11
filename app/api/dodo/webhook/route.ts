@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Webhook } from "standardwebhooks";
 import { dodo } from "@/lib/dodo";
 import { getPlanByProductId } from "@/lib/plans";
-import { addCredits, insertOrder } from "@/lib/db";
+import { activateSubscription, updateSubscriptionStatus } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -22,49 +22,72 @@ export async function POST(req: NextRequest) {
 
   const payload = JSON.parse(rawBody) as {
     type: string;
-    data: { payload_type: string; payment_id: string };
+    data: {
+      payload_type: string;
+      subscription_id?: string;
+      payment_id?: string;
+    };
   };
 
-  if (
-    payload.type === "payment.succeeded" &&
-    payload.data.payload_type === "Payment"
-  ) {
-    try {
-      const payment = await dodo().payments.retrieve(payload.data.payment_id);
-      const userId = (payment.metadata as Record<string, string>)?.user_id;
-      if (!userId) {
-        console.error("No user_id in payment metadata:", payload.data.payment_id);
-        return new Response("OK", { status: 200 });
+  if (payload.data.payload_type !== "Subscription") {
+    return new Response("OK", { status: 200 });
+  }
+
+  const subscriptionId = payload.data.subscription_id;
+  if (!subscriptionId) {
+    console.error("No subscription_id in webhook payload");
+    return new Response("OK", { status: 200 });
+  }
+
+  try {
+    switch (payload.type) {
+      case "subscription.active":
+      case "subscription.renewed": {
+        const subscription = await dodo().subscriptions.retrieve(subscriptionId);
+        const userId = (subscription.metadata as Record<string, string>)?.user_id;
+        if (!userId) {
+          console.error("No user_id in subscription metadata:", subscriptionId);
+          break;
+        }
+
+        const productId = subscription.product_id;
+        const planConfig = productId ? getPlanByProductId(productId) : null;
+        if (!planConfig) {
+          console.error("Unknown product_id:", productId);
+          break;
+        }
+
+        await activateSubscription(userId, subscriptionId, planConfig.plan);
+        console.log(`Activated ${planConfig.name} subscription for user ${userId}`);
+        break;
       }
 
-      const productId = payment.product_cart?.[0]?.product_id;
-      const planConfig = productId ? getPlanByProductId(productId) : null;
-      if (!planConfig) {
-        console.error("Unknown product_id:", productId);
-        return new Response("OK", { status: 200 });
+      case "subscription.cancelled": {
+        await updateSubscriptionStatus(subscriptionId, "cancelled");
+        console.log(`Subscription ${subscriptionId} cancelled`);
+        break;
       }
 
-      // Insert order first — returns false if already processed (idempotency)
-      const isNew = await insertOrder(
-        payload.data.payment_id,
-        userId,
-        planConfig.name,
-        planConfig.credits,
-        payment.total_amount ?? 0,
-        payment.currency ?? "USD"
-      );
-
-      if (isNew) {
-        await addCredits(userId, planConfig.credits, planConfig.plan);
-        console.log(
-          `Added ${planConfig.credits} credits to user ${userId} (payment ${payload.data.payment_id})`
-        );
-      } else {
-        console.log(`Duplicate webhook for payment ${payload.data.payment_id}, skipping`);
+      case "subscription.on_hold": {
+        await updateSubscriptionStatus(subscriptionId, "on_hold");
+        console.log(`Subscription ${subscriptionId} on hold`);
+        break;
       }
-    } catch (err) {
-      console.error("Error processing payment webhook:", err);
+
+      case "subscription.failed": {
+        await updateSubscriptionStatus(subscriptionId, "failed");
+        console.log(`Subscription ${subscriptionId} failed`);
+        break;
+      }
+
+      case "subscription.expired": {
+        await updateSubscriptionStatus(subscriptionId, "expired");
+        console.log(`Subscription ${subscriptionId} expired`);
+        break;
+      }
     }
+  } catch (err) {
+    console.error("Error processing subscription webhook:", err);
   }
 
   return new Response("OK", { status: 200 });

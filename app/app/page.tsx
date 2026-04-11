@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { UploadCloud, FileVideo, X, Copy, Check, Loader2, Zap } from "lucide-react";
+import { UploadCloud, FileVideo, X, Copy, Check, Loader2, Zap, Crown } from "lucide-react";
 
 const DEFAULT_PROMPT = `Role & Goal
 
@@ -177,15 +177,23 @@ export default function Home() {
   const [rewritePhase, setRewritePhase] = useState<"idle" | "processing" | "done" | "error">("idle");
   const [rewriteCopied, setRewriteCopied] = useState(false);
   const [rewriteError, setRewriteError] = useState("");
-  const [credits, setCredits] = useState<number | null>(null);
+  const [plan, setPlan] = useState<string>("free");
+  const [subStatus, setSubStatus] = useState<string | null>(null);
+  const [freeAnalyses, setFreeAnalyses] = useState<number>(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isSubscribed = subStatus === "active" && plan !== "free";
 
   useEffect(() => {
     fetch("/api/user")
       .then((r) => r.json())
-      .then((d) => setCredits(d.credits ?? 0))
-      .catch(() => setCredits(0));
+      .then((d) => {
+        setPlan(d.plan ?? "free");
+        setSubStatus(d.subscriptionStatus ?? null);
+        setFreeAnalyses(d.freeAnalyses ?? 0);
+      })
+      .catch(() => {});
   }, []);
 
   const setStepStatus = (id: string, status: Step["status"]) =>
@@ -272,7 +280,7 @@ export default function Home() {
       if (res.status === 402) {
         setShowUpgrade(true);
         setPhase("error");
-        setErrorMsg("You have no credits remaining.");
+        setErrorMsg("No active subscription. Please subscribe to continue.");
         return;
       }
 
@@ -297,7 +305,7 @@ export default function Home() {
           const data = line.slice(6);
           if (data === "[DONE]") {
             setPhase("done");
-            fetch("/api/user").then((r) => r.json()).then((d) => setCredits(d.credits ?? 0)).catch(() => {});
+            fetch("/api/user").then((r) => r.json()).then((d) => setFreeAnalyses(d.freeAnalyses ?? 0)).catch(() => {});
             continue;
           }
           try {
@@ -392,19 +400,33 @@ export default function Home() {
             <p className="text-zinc-500 text-xs mt-0.5">UGC video → AI generation prompt</p>
           </div>
           <div className="flex items-center gap-3">
-            {credits !== null && (
-              <button
-                onClick={() => setShowUpgrade(true)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                  credits === 0
-                    ? "border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/40"
-                    : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-                }`}
-              >
-                <Zap size={12} className={credits === 0 ? "text-red-400" : "text-violet-400"} />
-                {credits} credit{credits !== 1 ? "s" : ""}
-              </button>
-            )}
+            <button
+              onClick={() => !isSubscribed && setShowUpgrade(true)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                isSubscribed
+                  ? "border-violet-700 bg-violet-950/40 text-violet-300 cursor-default"
+                  : freeAnalyses > 0
+                  ? "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                  : "border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/40"
+              }`}
+            >
+              {isSubscribed ? (
+                <>
+                  <Crown size={12} className="text-violet-400" />
+                  {plan === "monthly" ? "Monthly" : "Weekly"} Plan
+                </>
+              ) : freeAnalyses > 0 ? (
+                <>
+                  <Zap size={12} className="text-violet-400" />
+                  {freeAnalyses} free {freeAnalyses === 1 ? "trial" : "trials"} left
+                </>
+              ) : (
+                <>
+                  <Zap size={12} className="text-red-400" />
+                  No trials left
+                </>
+              )}
+            </button>
             <UserButton />
           </div>
         </div>
@@ -640,38 +662,36 @@ export default function Home() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-1">
-              <h2 className="text-xl font-bold">Get more credits</h2>
-              <p className="text-zinc-400 text-sm">Each credit = one full video analysis.</p>
+              <h2 className="text-xl font-bold">Subscribe to Prompt Please</h2>
+              <p className="text-zinc-400 text-sm">Unlimited video analyses. Cancel anytime.</p>
             </div>
 
             <div className="space-y-3">
               {[
-                { name: "Starter",  credits: 10,  price: "$9",  tag: null },
-                { name: "Creator",  credits: 40,  price: "$29", tag: "Popular" },
-                { name: "Pro",      credits: 100, price: "$59", tag: null },
-              ].map((plan) => (
+                { name: "Weekly",  price: "$9",  interval: "/week", tag: null },
+                { name: "Monthly", price: "$29", interval: "/month", tag: "Best value" },
+              ].map((p) => (
                 <div
-                  key={plan.name}
-                  className="flex items-center justify-between border border-zinc-700 rounded-xl px-4 py-3 hover:border-violet-500 transition-colors"
+                  key={p.name}
+                  className={`flex items-center justify-between border rounded-xl px-4 py-4 hover:border-violet-500 transition-colors ${
+                    p.tag ? "border-violet-600 bg-violet-500/5" : "border-zinc-700"
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-sm font-medium flex items-center gap-2">
-                        {plan.name}
-                        {plan.tag && (
-                          <span className="text-xs bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{plan.tag}</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-zinc-500">{plan.credits} credits</p>
-                    </div>
+                  <div>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      {p.name}
+                      {p.tag && (
+                        <span className="text-xs bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{p.tag}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-zinc-500">Unlimited analyses</p>
                   </div>
                   <button
                     onClick={() => {
-                      // Dodo Payments checkout — wired up in next task
                       fetch("/api/dodo/checkout", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ plan: plan.name.toLowerCase() }),
+                        body: JSON.stringify({ plan: p.name.toLowerCase() }),
                       })
                         .then((r) => r.json())
                         .then((d) => { if (d.url) window.location.href = d.url; })
@@ -679,7 +699,7 @@ export default function Home() {
                     }}
                     className="text-sm font-semibold bg-violet-600 hover:bg-violet-500 px-4 py-1.5 rounded-lg transition-colors"
                   >
-                    {plan.price}
+                    {p.price}<span className="text-xs font-normal text-violet-300">{p.interval}</span>
                   </button>
                 </div>
               ))}

@@ -2,29 +2,23 @@ import type { Plan } from "./db";
 
 export interface PlanConfig {
   name: string;
-  credits: number;
-  productId: string;
   plan: Plan;
+  productId: string;
+  interval: "week" | "month";
 }
 
 const PLANS: Record<string, PlanConfig> = {
-  starter: {
-    name: "Starter",
-    credits: 10,
-    productId: process.env.DODO_PRODUCT_STARTER!,
-    plan: "creator",
+  weekly: {
+    name: "Weekly",
+    plan: "weekly",
+    productId: process.env.DODO_PRODUCT_WEEKLY!,
+    interval: "week",
   },
-  creator: {
-    name: "Creator",
-    credits: 40,
-    productId: process.env.DODO_PRODUCT_CREATOR!,
-    plan: "creator",
-  },
-  pro: {
-    name: "Pro",
-    credits: 100,
-    productId: process.env.DODO_PRODUCT_PRO!,
-    plan: "pro",
+  monthly: {
+    name: "Monthly",
+    plan: "monthly",
+    productId: process.env.DODO_PRODUCT_MONTHLY!,
+    interval: "month",
   },
 };
 

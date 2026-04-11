@@ -9,5 +9,9 @@ export async function GET() {
   const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
 
   const user = await upsertUser(userId, email);
-  return Response.json({ credits: user.credits, plan: user.plan });
+  return Response.json({
+    plan: user.plan,
+    freeAnalyses: user.free_analyses,
+    subscriptionStatus: user.subscription_status,
+  });
 }
