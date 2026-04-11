@@ -7,25 +7,38 @@ export interface PlanConfig {
   interval: "week" | "month";
 }
 
-const PLANS: Record<string, PlanConfig> = {
-  weekly: {
-    name: "Weekly",
-    plan: "weekly",
-    productId: process.env.DODO_PRODUCT_WEEKLY!,
-    interval: "week",
-  },
-  monthly: {
-    name: "Monthly",
-    plan: "monthly",
-    productId: process.env.DODO_PRODUCT_MONTHLY!,
-    interval: "month",
-  },
-};
-
 export function getPlanByName(name: string): PlanConfig | null {
-  return PLANS[name.toLowerCase()] ?? null;
+  const plans: Record<string, PlanConfig> = {
+    weekly: {
+      name: "Weekly",
+      plan: "weekly",
+      productId: process.env.DODO_PRODUCT_WEEKLY!,
+      interval: "week",
+    },
+    monthly: {
+      name: "Monthly",
+      plan: "monthly",
+      productId: process.env.DODO_PRODUCT_MONTHLY!,
+      interval: "month",
+    },
+  };
+  return plans[name.toLowerCase()] ?? null;
 }
 
 export function getPlanByProductId(productId: string): PlanConfig | null {
-  return Object.values(PLANS).find((p) => p.productId === productId) ?? null;
+  const plans: PlanConfig[] = [
+    {
+      name: "Weekly",
+      plan: "weekly",
+      productId: process.env.DODO_PRODUCT_WEEKLY!,
+      interval: "week",
+    },
+    {
+      name: "Monthly",
+      plan: "monthly",
+      productId: process.env.DODO_PRODUCT_MONTHLY!,
+      interval: "month",
+    },
+  ];
+  return plans.find((p) => p.productId === productId) ?? null;
 }
