@@ -41,6 +41,11 @@ export async function runMigrations() {
       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  // Add columns that may be missing on existing tables
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS free_analyses INTEGER NOT NULL DEFAULT 3`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_id TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ`;
 }
 
 /**
