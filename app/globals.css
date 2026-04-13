@@ -9,18 +9,18 @@
   --bg-elevated: oklch(0.178 0.006 264);
   --bg-surface: oklch(0.215 0.006 260);
 
-  /* ── Orange accent (hue 41°) ── */
-  --accent-50: oklch(0.96 0.03 55);
-  --accent-100: oklch(0.9 0.06 50);
-  --accent-200: oklch(0.83 0.1 47);
-  --accent-300: oklch(0.76 0.15 44);
-  --accent-400: oklch(0.72 0.18 42);
-  --accent-500: oklch(0.705 0.191 41);
-  --accent-600: oklch(0.63 0.19 39);
-  --accent-700: oklch(0.53 0.16 37);
-  --accent-800: oklch(0.43 0.12 35);
-  --accent-900: oklch(0.33 0.08 33);
-  --accent-950: oklch(0.23 0.05 31);
+  /* ── X/Twitter blue accent (hue 250°) ── */
+  --accent-50: oklch(0.96 0.02 250);
+  --accent-100: oklch(0.91 0.04 250);
+  --accent-200: oklch(0.84 0.08 250);
+  --accent-300: oklch(0.76 0.12 250);
+  --accent-400: oklch(0.7 0.16 250);
+  --accent-500: oklch(0.65 0.19 250);
+  --accent-600: oklch(0.58 0.17 250);
+  --accent-700: oklch(0.48 0.14 250);
+  --accent-800: oklch(0.38 0.11 250);
+  --accent-900: oklch(0.28 0.07 250);
+  --accent-950: oklch(0.2 0.04 250);
 
   /* ── Text (X/Twitter tones) ── */
   --text-primary: oklch(0.934 0.003 250);

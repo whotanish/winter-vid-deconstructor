@@ -496,7 +496,7 @@ export default function Home() {
         <button
           onClick={handleAnalyze}
           disabled={!file || phase === "processing"}
-          className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {phase === "processing" ? (
             <span className="flex items-center justify-center gap-2">
@@ -600,7 +600,7 @@ export default function Home() {
             <button
               onClick={handleRewrite}
               disabled={!customScript.trim() || rewritePhase === "processing"}
-              className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {rewritePhase === "processing" ? (
                 <span className="flex items-center justify-center gap-2">
@@ -678,7 +678,7 @@ export default function Home() {
                     <p className="text-sm font-medium flex items-center gap-2">
                       {p.name}
                       {p.tag && (
-                        <span className="text-xs bg-accent-500 text-black px-1.5 py-0.5 rounded-full">{p.tag}</span>
+                        <span className="text-xs bg-accent-500 text-white px-1.5 py-0.5 rounded-full">{p.tag}</span>
                       )}
                     </p>
                     <p className="text-xs text-dim">Unlimited analyses</p>
@@ -697,7 +697,7 @@ export default function Home() {
                         })
                         .catch((err) => alert("Checkout failed: " + err.message));
                     }}
-                    className="text-sm font-semibold bg-accent-500 hover:bg-accent-400 text-black px-4 py-1.5 rounded-lg transition-colors"
+                    className="text-sm font-semibold bg-accent-500 hover:bg-accent-400 text-white px-4 py-1.5 rounded-lg transition-colors"
                   >
                     {p.price}<span className="text-xs font-normal text-accent-900">{p.interval}</span>
                   </button>

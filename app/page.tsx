@@ -64,7 +64,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/sign-up"
-              className="text-sm bg-accent-500 hover:bg-accent-400 text-black px-4 py-2 rounded-lg font-medium transition-colors"
+              className="text-sm bg-accent-500 hover:bg-accent-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
               Get started free
             </Link>
@@ -86,7 +86,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/sign-up"
-              className="flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-black px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               Start for free <ArrowRight size={15} />
             </Link>
@@ -172,7 +172,7 @@ export default function LandingPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-accent-500 text-black text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-accent-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       Best value
                     </span>
                   </div>
@@ -192,7 +192,7 @@ export default function LandingPage() {
                   href="/sign-up"
                   className={`block text-center text-sm font-semibold py-2.5 rounded-xl transition-colors ${
                     plan.popular
-                      ? "bg-accent-500 hover:bg-accent-400 text-black"
+                      ? "bg-accent-500 hover:bg-accent-400 text-white"
                       : "bg-surface-hover hover:bg-edge-hover text-foreground"
                   }`}
                 >
@@ -229,7 +229,7 @@ export default function LandingPage() {
           <p className="text-dim text-sm">Unlimited analyses from $9/week. No credit card to start.</p>
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-black px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+            className="inline-flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
           >
             Get started free <ArrowRight size={15} />
           </Link>
