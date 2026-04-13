@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    const apiKey = process.env.DODO_API_KEY;
+    const apiKey = process.env.DODO_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
         { error: "Payment service not configured" },

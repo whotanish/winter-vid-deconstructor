@@ -12,13 +12,13 @@ export function getPlanByName(name: string): PlanConfig | null {
     weekly: {
       name: "Weekly",
       plan: "weekly",
-      productId: process.env.DODO_PRODUCT_WEEKLY!,
+      productId: (process.env.DODO_PRODUCT_WEEKLY || "").trim(),
       interval: "week",
     },
     monthly: {
       name: "Monthly",
       plan: "monthly",
-      productId: process.env.DODO_PRODUCT_MONTHLY!,
+      productId: (process.env.DODO_PRODUCT_MONTHLY || "").trim(),
       interval: "month",
     },
   };
@@ -30,13 +30,13 @@ export function getPlanByProductId(productId: string): PlanConfig | null {
     {
       name: "Weekly",
       plan: "weekly",
-      productId: process.env.DODO_PRODUCT_WEEKLY!,
+      productId: (process.env.DODO_PRODUCT_WEEKLY || "").trim(),
       interval: "week",
     },
     {
       name: "Monthly",
       plan: "monthly",
-      productId: process.env.DODO_PRODUCT_MONTHLY!,
+      productId: (process.env.DODO_PRODUCT_MONTHLY || "").trim(),
       interval: "month",
     },
   ];
