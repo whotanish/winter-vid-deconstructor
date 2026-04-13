@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { dodo } from "@/lib/dodo";
 import { getPlanByName } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
@@ -19,27 +18,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    console.log("Creating checkout session:", {
-      plan,
-      productId: planConfig.productId,
-      email,
-      userId,
+    const apiKey = process.env.DODO_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Payment service not configured" },
+        { status: 500 }
+      );
+    }
+
+    const response = await fetch("https://live.dodopayments.com/checkouts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        product_cart: [
+          { product_id: planConfig.productId, quantity: 1 },
+        ],
+        customer: {
+          email: email || "",
+          name: user?.firstName || "",
+        },
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/app`,
+        metadata: {
+          user_id: userId,
+        },
+      }),
     });
 
-    const session = await dodo().checkoutSessions.create({
-      product_cart: [{ product_id: planConfig.productId, quantity: 1 }],
-      customer: {
-        email: email || "",
-        name: user?.firstName || "",
-      },
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/app`,
-      metadata: {
-        user_id: userId,
-      },
-    });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Dodo checkout error:", response.status, errorBody);
+      return NextResponse.json(
+        { error: `Checkout failed (${response.status}): ${errorBody}` },
+        { status: 500 }
+      );
+    }
 
-    console.log("Checkout session created:", session.session_id);
-
+    const session = await response.json();
     return NextResponse.json({ url: session.checkout_url });
   } catch (err) {
     console.error("Checkout error:", err);
