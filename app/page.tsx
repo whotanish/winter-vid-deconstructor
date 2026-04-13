@@ -75,13 +75,9 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="px-6 py-24 text-center">
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 text-xs bg-accent-950 border border-accent-900 text-accent-300 px-3 py-1.5 rounded-full">
-            <Zap size={11} />
-            Powered by Google Gemini
-          </div>
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight">
-            Turn any UGC video into a{" "}
-            <span className="text-accent-400">perfect AI prompt</span>
+            Never ask for prompt in the{" "}
+            <span className="text-accent-400">comment section</span> again
           </h1>
           <p className="text-dim text-lg max-w-xl mx-auto leading-relaxed">
             Upload a video and get a high-fidelity generation prompt for Sora, Kling, or Runway — in minutes.
