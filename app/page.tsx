@@ -76,8 +76,7 @@ export default function LandingPage() {
       <section className="px-6 py-24 text-center">
         <div className="max-w-3xl mx-auto space-y-6">
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight">
-            Never ask for prompt in the{" "}
-            <span className="text-accent-400">comment section</span> again
+            Never ask for <span className="text-accent-400">prompt</span> in the comment section again
           </h1>
           <p className="text-dim text-lg max-w-xl mx-auto leading-relaxed">
             Upload a video and get a high-fidelity generation prompt for Sora, Kling, or Runway — in minutes.
