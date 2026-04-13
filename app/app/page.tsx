@@ -694,8 +694,11 @@ export default function Home() {
                         body: JSON.stringify({ plan: p.name.toLowerCase() }),
                       })
                         .then((r) => r.json())
-                        .then((d) => { if (d.url) window.location.href = d.url; })
-                        .catch(console.error);
+                        .then((d) => {
+                          if (d.url) window.location.href = d.url;
+                          else alert(d.error || "Checkout failed");
+                        })
+                        .catch((err) => alert("Checkout failed: " + err.message));
                     }}
                     className="text-sm font-semibold bg-violet-600 hover:bg-violet-500 px-4 py-1.5 rounded-lg transition-colors"
                   >
