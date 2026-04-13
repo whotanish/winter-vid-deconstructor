@@ -238,7 +238,6 @@ export default function Home() {
     setSteps(STEPS.map((s) => ({ ...s })));
 
     try {
-      // ── Step 1: Get pre-signed R2 upload URL from server ─────────────────
       setStepStatus("upload", "active");
 
       const urlRes = await fetch("/api/get-upload-url", {
@@ -249,7 +248,6 @@ export default function Home() {
       const urlData = await urlRes.json() as { uploadUrl?: string; key?: string; error?: string };
       if (!urlRes.ok) throw new Error(urlData.error || "Failed to get upload URL");
 
-      // ── Step 2: PUT file directly to R2 (browser → Cloudflare, no Vercel limit) ──
       const r2Key = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", urlData.uploadUrl!);
@@ -270,7 +268,6 @@ export default function Home() {
       setUploadProgress(100);
       setStepStatus("upload", "done");
 
-      // ── Step 3: Send R2 key to /api/analyze — server downloads + uploads to Gemini ──
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -390,34 +387,34 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
+    <main className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-2xl mx-auto space-y-8">
 
         {/* Header */}
         <div className="flex items-center justify-between pt-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Prompt Please</h1>
-            <p className="text-zinc-500 text-xs mt-0.5">UGC video → AI generation prompt</p>
+            <p className="text-dim text-xs mt-0.5">UGC video &rarr; AI generation prompt</p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => !isSubscribed && setShowUpgrade(true)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 isSubscribed
-                  ? "border-violet-700 bg-violet-950/40 text-violet-300 cursor-default"
+                  ? "border-accent-800 bg-accent-950 text-accent-300 cursor-default"
                   : freeAnalyses > 0
-                  ? "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-                  : "border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/40"
+                  ? "border-edge bg-surface-elevated text-foreground hover:bg-surface-hover"
+                  : "border-red-800 bg-red-950/40 text-red-300 hover:bg-red-900/40"
               }`}
             >
               {isSubscribed ? (
                 <>
-                  <Crown size={12} className="text-violet-400" />
+                  <Crown size={12} className="text-accent-400" />
                   {plan === "monthly" ? "Monthly" : "Weekly"} Plan
                 </>
               ) : freeAnalyses > 0 ? (
                 <>
-                  <Zap size={12} className="text-violet-400" />
+                  <Zap size={12} className="text-accent-400" />
                   {freeAnalyses} free {freeAnalyses === 1 ? "trial" : "trials"} left
                 </>
               ) : (
@@ -440,10 +437,10 @@ export default function Home() {
           onClick={() => !file && inputRef.current?.click()}
           className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
             dragActive
-              ? "border-violet-500 bg-violet-500/10"
+              ? "border-accent-500 bg-accent-950"
               : file
-              ? "border-zinc-600 bg-zinc-900 cursor-default"
-              : "border-zinc-700 bg-zinc-900 hover:border-zinc-500 hover:bg-zinc-800/50"
+              ? "border-edge bg-surface-elevated cursor-default"
+              : "border-edge bg-surface-elevated hover:border-edge-hover hover:bg-surface-hover"
           }`}
         >
           <input
@@ -456,42 +453,42 @@ export default function Home() {
           {file ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 text-left">
-                <FileVideo className="text-violet-400 shrink-0" size={24} />
+                <FileVideo className="text-accent-400 shrink-0" size={24} />
                 <div>
                   <p className="font-medium text-sm truncate max-w-sm">{file.name}</p>
-                  <p className="text-zinc-500 text-xs">{formatBytes(file.size)}</p>
+                  <p className="text-dim text-xs">{formatBytes(file.size)}</p>
                 </div>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors"
+                className="p-1 rounded hover:bg-surface-hover text-dim hover:text-foreground transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <UploadCloud className="mx-auto text-zinc-500" size={36} />
+              <UploadCloud className="mx-auto text-dim" size={36} />
               <div>
                 <p className="font-medium">Drop your video here</p>
-                <p className="text-zinc-500 text-sm mt-1">MP4, MOV, WebM &middot; up to 2 GB (Gemini limit)</p>
+                <p className="text-dim text-sm mt-1">MP4, MOV, WebM &middot; up to 2 GB (Gemini limit)</p>
               </div>
-              <p className="text-xs text-zinc-600">or click to browse</p>
+              <p className="text-xs text-dim-muted">or click to browse</p>
             </div>
           )}
         </div>
 
         {/* Optional description */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-300">
-            Video description <span className="text-zinc-500 font-normal">(optional)</span>
+          <label className="text-sm font-medium text-foreground">
+            Video description <span className="text-dim font-normal">(optional)</span>
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add any context about the video to help Gemini understand it better..."
             rows={2}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-none"
+            className="w-full bg-surface-elevated border border-edge rounded-lg px-4 py-3 text-sm placeholder-dim-muted focus:outline-none focus:border-accent-500 resize-none"
           />
         </div>
 
@@ -499,7 +496,7 @@ export default function Home() {
         <button
           onClick={handleAnalyze}
           disabled={!file || phase === "processing"}
-          className="w-full py-3 rounded-xl font-semibold text-sm bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {phase === "processing" ? (
             <span className="flex items-center justify-center gap-2">
@@ -512,29 +509,29 @@ export default function Home() {
 
         {/* Progress steps */}
         {phase === "processing" && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Progress</p>
+          <div className="bg-surface-elevated border border-edge rounded-xl p-5 space-y-3">
+            <p className="text-xs font-semibold text-dim uppercase tracking-widest">Progress</p>
             {steps.map((step) => (
               <div key={step.id} className="flex items-center gap-3">
                 <span className="shrink-0">
                   {step.status === "done" ? (
                     <Check size={15} className="text-emerald-400" />
                   ) : step.status === "active" ? (
-                    <Loader2 size={15} className="animate-spin text-violet-400" />
+                    <Loader2 size={15} className="animate-spin text-accent-400" />
                   ) : step.status === "error" ? (
                     <X size={15} className="text-red-400" />
                   ) : (
-                    <span className="block w-[15px] h-[15px] rounded-full border border-zinc-700" />
+                    <span className="block w-[15px] h-[15px] rounded-full border border-edge-hover" />
                   )}
                 </span>
                 <span className={`text-sm ${
-                  step.status === "done" ? "text-zinc-300"
-                  : step.status === "active" ? "text-zinc-100"
-                  : "text-zinc-600"
+                  step.status === "done" ? "text-foreground"
+                  : step.status === "active" ? "text-foreground"
+                  : "text-dim-muted"
                 }`}>
                   {step.label}
                   {step.id === "upload" && step.status === "active" && uploadProgress > 0 && (
-                    <span className="ml-2 text-violet-400 text-xs">{uploadProgress}%</span>
+                    <span className="ml-2 text-accent-400 text-xs">{uploadProgress}%</span>
                   )}
                 </span>
               </div>
@@ -560,27 +557,27 @@ export default function Home() {
         {(result || phase === "done") && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-zinc-300">Extracted Prompt</p>
+              <p className="text-sm font-semibold text-foreground">Extracted Prompt</p>
               <div className="flex gap-2">
                 <button
                   onClick={handleCopy}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-surface-hover hover:bg-edge-hover transition-colors"
                 >
                   {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                   {copied ? "Copied!" : "Copy"}
                 </button>
                 <button
                   onClick={reset}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-zinc-400"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-surface-hover hover:bg-edge-hover transition-colors text-dim"
                 >
                   Reset
                 </button>
               </div>
             </div>
-            <pre className="whitespace-pre-wrap text-sm bg-zinc-900 border border-zinc-700 rounded-xl p-5 leading-relaxed font-mono text-zinc-200">
+            <pre className="whitespace-pre-wrap text-sm bg-surface-elevated border border-edge rounded-xl p-5 leading-relaxed font-mono text-foreground">
               {result}
               {phase === "processing" && (
-                <span className="inline-block w-2 h-4 bg-violet-400 animate-pulse ml-0.5 align-middle" />
+                <span className="inline-block w-2 h-4 bg-accent-400 animate-pulse ml-0.5 align-middle" />
               )}
             </pre>
           </div>
@@ -588,22 +585,22 @@ export default function Home() {
 
         {/* Rewrite with custom script */}
         {phase === "done" && (
-          <div className="border border-zinc-800 rounded-xl p-5 space-y-4">
+          <div className="border border-edge rounded-xl p-5 space-y-4">
             <div>
-              <p className="text-sm font-semibold text-zinc-300">Use your own script</p>
-              <p className="text-xs text-zinc-500 mt-1">Paste your custom dialogue below — the visual details from the video will be kept, only the script will be swapped.</p>
+              <p className="text-sm font-semibold text-foreground">Use your own script</p>
+              <p className="text-xs text-dim mt-1">Paste your custom dialogue below — the visual details from the video will be kept, only the script will be swapped.</p>
             </div>
             <textarea
               value={customScript}
               onChange={(e) => setCustomScript(e.target.value)}
               placeholder="Paste your script here..."
               rows={5}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-y"
+              className="w-full bg-surface-elevated border border-edge rounded-lg px-4 py-3 text-sm placeholder-dim-muted focus:outline-none focus:border-accent-500 resize-y"
             />
             <button
               onClick={handleRewrite}
               disabled={!customScript.trim() || rewritePhase === "processing"}
-              className="w-full py-3 rounded-xl font-semibold text-sm bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {rewritePhase === "processing" ? (
                 <span className="flex items-center justify-center gap-2">
@@ -626,23 +623,23 @@ export default function Home() {
             {(rewriteResult || rewritePhase === "done") && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-zinc-300">Rewritten Prompt</p>
+                  <p className="text-sm font-semibold text-foreground">Rewritten Prompt</p>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(rewriteResult);
                       setRewriteCopied(true);
                       setTimeout(() => setRewriteCopied(false), 2000);
                     }}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-surface-hover hover:bg-edge-hover transition-colors"
                   >
                     {rewriteCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     {rewriteCopied ? "Copied!" : "Copy"}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap text-sm bg-zinc-900 border border-zinc-700 rounded-xl p-5 leading-relaxed font-mono text-zinc-200">
+                <pre className="whitespace-pre-wrap text-sm bg-surface-elevated border border-edge rounded-xl p-5 leading-relaxed font-mono text-foreground">
                   {rewriteResult}
                   {rewritePhase === "processing" && (
-                    <span className="inline-block w-2 h-4 bg-violet-400 animate-pulse ml-0.5 align-middle" />
+                    <span className="inline-block w-2 h-4 bg-accent-400 animate-pulse ml-0.5 align-middle" />
                   )}
                 </pre>
               </div>
@@ -654,16 +651,16 @@ export default function Home() {
       {/* Upgrade modal */}
       {showUpgrade && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowUpgrade(false)}
         >
           <div
-            className="bg-zinc-900 border border-zinc-700 rounded-2xl p-8 max-w-md w-full space-y-6"
+            className="bg-surface-elevated border border-edge rounded-2xl p-8 max-w-md w-full space-y-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Subscribe to Prompt Please</h2>
-              <p className="text-zinc-400 text-sm">Unlimited video analyses. Cancel anytime.</p>
+              <p className="text-dim text-sm">Unlimited video analyses. Cancel anytime.</p>
             </div>
 
             <div className="space-y-3">
@@ -673,18 +670,18 @@ export default function Home() {
               ].map((p) => (
                 <div
                   key={p.name}
-                  className={`flex items-center justify-between border rounded-xl px-4 py-4 hover:border-violet-500 transition-colors ${
-                    p.tag ? "border-violet-600 bg-violet-500/5" : "border-zinc-700"
+                  className={`flex items-center justify-between border rounded-xl px-4 py-4 hover:border-accent-500 transition-colors ${
+                    p.tag ? "border-accent-600 bg-accent-950" : "border-edge"
                   }`}
                 >
                   <div>
                     <p className="text-sm font-medium flex items-center gap-2">
                       {p.name}
                       {p.tag && (
-                        <span className="text-xs bg-violet-600 text-white px-1.5 py-0.5 rounded-full">{p.tag}</span>
+                        <span className="text-xs bg-accent-500 text-black px-1.5 py-0.5 rounded-full">{p.tag}</span>
                       )}
                     </p>
-                    <p className="text-xs text-zinc-500">Unlimited analyses</p>
+                    <p className="text-xs text-dim">Unlimited analyses</p>
                   </div>
                   <button
                     onClick={() => {
@@ -700,9 +697,9 @@ export default function Home() {
                         })
                         .catch((err) => alert("Checkout failed: " + err.message));
                     }}
-                    className="text-sm font-semibold bg-violet-600 hover:bg-violet-500 px-4 py-1.5 rounded-lg transition-colors"
+                    className="text-sm font-semibold bg-accent-500 hover:bg-accent-400 text-black px-4 py-1.5 rounded-lg transition-colors"
                   >
-                    {p.price}<span className="text-xs font-normal text-violet-300">{p.interval}</span>
+                    {p.price}<span className="text-xs font-normal text-accent-900">{p.interval}</span>
                   </button>
                 </div>
               ))}
@@ -710,7 +707,7 @@ export default function Home() {
 
             <button
               onClick={() => setShowUpgrade(false)}
-              className="w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="w-full text-sm text-dim hover:text-foreground transition-colors"
             >
               Maybe later
             </button>

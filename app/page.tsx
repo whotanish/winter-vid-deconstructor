@@ -31,7 +31,7 @@ const FAQS = [
   },
   {
     q: "How long does analysis take?",
-    a: "Usually 1–3 minutes depending on video length. You can watch the progress in real time.",
+    a: "Usually 1-3 minutes depending on video length. You can watch the progress in real time.",
   },
   {
     q: "What video formats are supported?",
@@ -49,22 +49,22 @@ const FAQS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-background text-foreground">
 
       {/* Nav */}
-      <nav className="border-b border-zinc-900 px-6 py-4">
+      <nav className="border-b border-edge-subtle px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="font-bold text-lg tracking-tight">Prompt Please</span>
           <div className="flex items-center gap-3">
             <Link
               href="/sign-in"
-              className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
+              className="text-sm text-dim hover:text-foreground transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="text-sm bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg font-medium transition-colors"
+              className="text-sm bg-accent-500 hover:bg-accent-400 text-black px-4 py-2 rounded-lg font-medium transition-colors"
             >
               Get started free
             </Link>
@@ -75,52 +75,52 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="px-6 py-24 text-center">
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 text-xs bg-violet-500/10 border border-violet-500/20 text-violet-300 px-3 py-1.5 rounded-full">
+          <div className="inline-flex items-center gap-2 text-xs bg-accent-950 border border-accent-900 text-accent-300 px-3 py-1.5 rounded-full">
             <Zap size={11} />
             Powered by Google Gemini
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight">
             Turn any UGC video into a{" "}
-            <span className="text-violet-400">perfect AI prompt</span>
+            <span className="text-accent-400">perfect AI prompt</span>
           </h1>
-          <p className="text-zinc-400 text-lg max-w-xl mx-auto leading-relaxed">
+          <p className="text-dim text-lg max-w-xl mx-auto leading-relaxed">
             Upload a video and get a high-fidelity generation prompt for Sora, Kling, or Runway — in minutes.
             Reverse-engineer any UGC style instantly.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/sign-up"
-              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-black px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               Start for free <ArrowRight size={15} />
             </Link>
             <Link
               href="/sign-in"
-              className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors px-6 py-3"
+              className="text-sm text-dim hover:text-foreground transition-colors px-6 py-3"
             >
-              Already have an account →
+              Already have an account &rarr;
             </Link>
           </div>
-          <p className="text-xs text-zinc-600">Try free first. No credit card required.</p>
+          <p className="text-xs text-dim-muted">Try free first. No credit card required.</p>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="px-6 py-20 border-t border-zinc-900">
+      <section className="px-6 py-20 border-t border-edge-subtle">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 space-y-2">
-            <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">How it works</p>
+            <p className="text-xs font-semibold text-accent-400 uppercase tracking-widest">How it works</p>
             <h2 className="text-3xl font-bold">Three steps to your prompt</h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-8">
             {STEPS.map((step, i) => (
               <div key={i} className="space-y-4">
-                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                  <step.icon size={18} className="text-violet-400" />
+                <div className="w-10 h-10 rounded-xl bg-accent-950 border border-accent-900 flex items-center justify-center">
+                  <step.icon size={18} className="text-accent-400" />
                 </div>
                 <div className="space-y-1.5">
                   <p className="font-semibold">{step.title}</p>
-                  <p className="text-sm text-zinc-500 leading-relaxed">{step.desc}</p>
+                  <p className="text-sm text-dim leading-relaxed">{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -129,11 +129,11 @@ export default function LandingPage() {
       </section>
 
       {/* What you get */}
-      <section className="px-6 py-20 border-t border-zinc-900 bg-zinc-900/30">
+      <section className="px-6 py-20 border-t border-edge-subtle bg-surface">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 space-y-2">
-            <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Output</p>
-            <h2 className="text-3xl font-bold">What's in your prompt</h2>
+            <p className="text-xs font-semibold text-accent-400 uppercase tracking-widest">Output</p>
+            <h2 className="text-3xl font-bold">What&apos;s in your prompt</h2>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {[
@@ -144,11 +144,11 @@ export default function LandingPage() {
               ["Audio authenticity cues", "Background noise, room reverb, mic quality"],
               ["Ready-to-paste prompt", "Formatted for Sora 2, Kling, and Runway — just copy and go"],
             ].map(([title, desc]) => (
-              <div key={title} className="flex gap-3 p-4 rounded-xl border border-zinc-800 bg-zinc-900">
+              <div key={title} className="flex gap-3 p-4 rounded-xl border border-edge bg-surface-elevated">
                 <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">{title}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>
+                  <p className="text-xs text-dim mt-0.5">{desc}</p>
                 </div>
               </div>
             ))}
@@ -157,12 +157,12 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="px-6 py-20 border-t border-zinc-900">
+      <section className="px-6 py-20 border-t border-edge-subtle">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 space-y-2">
-            <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Pricing</p>
+            <p className="text-xs font-semibold text-accent-400 uppercase tracking-widest">Pricing</p>
             <h2 className="text-3xl font-bold">Unlimited analyses, simple pricing</h2>
-            <p className="text-zinc-500 text-sm">Cancel anytime. Try free first — 3 analyses on signup.</p>
+            <p className="text-dim text-sm">Cancel anytime. Try free first — 3 analyses on signup.</p>
           </div>
           <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {PLANS.map((plan) => (
@@ -170,13 +170,13 @@ export default function LandingPage() {
                 key={plan.name}
                 className={`relative rounded-2xl border p-6 space-y-5 ${
                   plan.popular
-                    ? "border-violet-500 bg-violet-500/5"
-                    : "border-zinc-800 bg-zinc-900"
+                    ? "border-accent-500 bg-accent-950"
+                    : "border-edge bg-surface-elevated"
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-violet-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-accent-500 text-black text-xs font-semibold px-3 py-1 rounded-full">
                       Best value
                     </span>
                   </div>
@@ -185,19 +185,19 @@ export default function LandingPage() {
                   <p className="font-semibold">{plan.name}</p>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-3xl font-bold">{plan.price}</span>
-                    <span className="text-zinc-500 text-xs">{plan.priceNote}</span>
+                    <span className="text-dim text-xs">{plan.priceNote}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-zinc-300">
-                  <Zap size={14} className="text-violet-400" />
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Zap size={14} className="text-accent-400" />
                   {plan.desc}
                 </div>
                 <Link
                   href="/sign-up"
                   className={`block text-center text-sm font-semibold py-2.5 rounded-xl transition-colors ${
                     plan.popular
-                      ? "bg-violet-600 hover:bg-violet-500"
-                      : "bg-zinc-800 hover:bg-zinc-700"
+                      ? "bg-accent-500 hover:bg-accent-400 text-black"
+                      : "bg-surface-hover hover:bg-edge-hover text-foreground"
                   }`}
                 >
                   Get started
@@ -209,17 +209,17 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-20 border-t border-zinc-900 bg-zinc-900/30">
+      <section className="px-6 py-20 border-t border-edge-subtle bg-surface">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-14 space-y-2">
-            <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">FAQ</p>
+            <p className="text-xs font-semibold text-accent-400 uppercase tracking-widest">FAQ</p>
             <h2 className="text-3xl font-bold">Common questions</h2>
           </div>
           <div className="space-y-6">
             {FAQS.map(({ q, a }) => (
-              <div key={q} className="border-b border-zinc-800 pb-6 last:border-0">
+              <div key={q} className="border-b border-edge pb-6 last:border-0">
                 <p className="font-medium mb-2">{q}</p>
-                <p className="text-sm text-zinc-500 leading-relaxed">{a}</p>
+                <p className="text-sm text-dim leading-relaxed">{a}</p>
               </div>
             ))}
           </div>
@@ -227,13 +227,13 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-24 border-t border-zinc-900 text-center">
+      <section className="px-6 py-24 border-t border-edge-subtle text-center">
         <div className="max-w-xl mx-auto space-y-6">
           <h2 className="text-3xl font-bold">Ready to clone any video?</h2>
-          <p className="text-zinc-500 text-sm">Unlimited analyses from $9/week. No credit card to start.</p>
+          <p className="text-dim text-sm">Unlimited analyses from $9/week. No credit card to start.</p>
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+            className="inline-flex items-center gap-2 bg-accent-500 hover:bg-accent-400 text-black px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
           >
             Get started free <ArrowRight size={15} />
           </Link>
@@ -241,9 +241,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-900 px-6 py-8">
-        <div className="max-w-5xl mx-auto flex items-center justify-between text-xs text-zinc-600">
-          <span>© 2026 Prompt Please</span>
+      <footer className="border-t border-edge-subtle px-6 py-8">
+        <div className="max-w-5xl mx-auto flex items-center justify-between text-xs text-dim-muted">
+          <span>&copy; 2026 Prompt Please</span>
           <span>promptplease.app</span>
         </div>
       </footer>
