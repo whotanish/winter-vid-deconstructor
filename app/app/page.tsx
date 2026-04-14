@@ -188,6 +188,7 @@ export default function Home() {
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [freeAnalyses, setFreeAnalyses] = useState<number>(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showRemix, setShowRemix] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isSubscribed = subStatus === "active" && plan !== "free";
@@ -393,6 +394,7 @@ export default function Home() {
     setRewriteResult("");
     setRewritePhase("idle");
     setRewriteError("");
+    setShowRemix(false);
   };
 
   return (
@@ -570,8 +572,17 @@ export default function Home() {
           </div>
         )}
 
-        {/* Remix section — above the prompt output */}
-        {phase === "done" && (
+        {/* Remix */}
+        {phase === "done" && !showRemix && (
+          <button
+            onClick={() => setShowRemix(true)}
+            className="w-full py-3 rounded-xl font-semibold text-sm border border-accent-500 text-accent-400 hover:bg-accent-950 transition-colors"
+          >
+            Remix — Make this ad for your product
+          </button>
+        )}
+
+        {phase === "done" && showRemix && (
           <div className="border border-edge rounded-xl p-5 space-y-4">
             <div>
               <p className="text-sm font-semibold text-foreground">Make this ad for your product</p>
@@ -598,7 +609,6 @@ export default function Home() {
               )}
             </button>
 
-            {/* Remix error */}
             {rewritePhase === "error" && (
               <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start gap-3">
                 <X size={16} className="text-red-400 shrink-0 mt-0.5" />
@@ -606,7 +616,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Remix result */}
             {(rewriteResult || rewritePhase === "done") && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
