@@ -591,7 +591,71 @@ export default function Home() {
           </div>
         )}
 
-        {/* Result */}
+        {/* Remix section — above the prompt output */}
+        {phase === "done" && (
+          <div className="border border-edge rounded-xl p-5 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Make this ad for your product</p>
+              <p className="text-xs text-dim mt-1">Drop in your own script and product details — same visual style, new dialogue.</p>
+            </div>
+            <textarea
+              value={customScript}
+              onChange={(e) => setCustomScript(e.target.value)}
+              placeholder="Paste your script, product name, and any details..."
+              rows={5}
+              className="w-full bg-surface-elevated border border-edge rounded-lg px-4 py-3 text-sm placeholder-dim-muted focus:outline-none focus:border-accent-500 resize-y"
+            />
+            <button
+              onClick={handleRewrite}
+              disabled={!customScript.trim() || rewritePhase === "processing"}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {rewritePhase === "processing" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin" /> Remixing...
+                </span>
+              ) : (
+                "Remix Ad"
+              )}
+            </button>
+
+            {/* Remix error */}
+            {rewritePhase === "error" && (
+              <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start gap-3">
+                <X size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400/80 break-words">{rewriteError}</p>
+              </div>
+            )}
+
+            {/* Remix result */}
+            {(rewriteResult || rewritePhase === "done") && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">Remixed Prompt</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(rewriteResult);
+                      setRewriteCopied(true);
+                      setTimeout(() => setRewriteCopied(false), 2000);
+                    }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-surface-hover hover:bg-edge-hover transition-colors"
+                  >
+                    {rewriteCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    {rewriteCopied ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <pre className="whitespace-pre-wrap text-sm bg-surface-elevated border border-edge rounded-xl p-5 leading-relaxed font-mono text-foreground">
+                  {rewriteResult}
+                  {rewritePhase === "processing" && (
+                    <span className="inline-block w-2 h-4 bg-accent-400 animate-pulse ml-0.5 align-middle" />
+                  )}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Extracted prompt output */}
         {(result || phase === "done") && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -618,70 +682,6 @@ export default function Home() {
                 <span className="inline-block w-2 h-4 bg-accent-400 animate-pulse ml-0.5 align-middle" />
               )}
             </pre>
-          </div>
-        )}
-
-        {/* Rewrite with custom script */}
-        {phase === "done" && (
-          <div className="border border-edge rounded-xl p-5 space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Use your own script</p>
-              <p className="text-xs text-dim mt-1">Paste your custom dialogue below — the visual details from the video will be kept, only the script will be swapped.</p>
-            </div>
-            <textarea
-              value={customScript}
-              onChange={(e) => setCustomScript(e.target.value)}
-              placeholder="Paste your script here..."
-              rows={5}
-              className="w-full bg-surface-elevated border border-edge rounded-lg px-4 py-3 text-sm placeholder-dim-muted focus:outline-none focus:border-accent-500 resize-y"
-            />
-            <button
-              onClick={handleRewrite}
-              disabled={!customScript.trim() || rewritePhase === "processing"}
-              className="w-full py-3 rounded-xl font-semibold text-sm bg-accent-500 hover:bg-accent-400 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {rewritePhase === "processing" ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 size={16} className="animate-spin" /> Regenerating...
-                </span>
-              ) : (
-                "Regenerate with My Script"
-              )}
-            </button>
-
-            {/* Rewrite error */}
-            {rewritePhase === "error" && (
-              <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start gap-3">
-                <X size={16} className="text-red-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-400/80 break-words">{rewriteError}</p>
-              </div>
-            )}
-
-            {/* Rewrite result */}
-            {(rewriteResult || rewritePhase === "done") && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">Rewritten Prompt</p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(rewriteResult);
-                      setRewriteCopied(true);
-                      setTimeout(() => setRewriteCopied(false), 2000);
-                    }}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-surface-hover hover:bg-edge-hover transition-colors"
-                  >
-                    {rewriteCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                    {rewriteCopied ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-                <pre className="whitespace-pre-wrap text-sm bg-surface-elevated border border-edge rounded-xl p-5 leading-relaxed font-mono text-foreground">
-                  {rewriteResult}
-                  {rewritePhase === "processing" && (
-                    <span className="inline-block w-2 h-4 bg-accent-400 animate-pulse ml-0.5 align-middle" />
-                  )}
-                </pre>
-              </div>
-            )}
           </div>
         )}
       </div>
