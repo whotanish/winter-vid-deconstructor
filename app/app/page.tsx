@@ -155,11 +155,18 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { id: "upload",  label: "Uploading video to Gemini Files API",  status: "pending" },
-  { id: "process", label: "Waiting for file to become active",    status: "pending" },
-  { id: "analyze", label: "Analyzing video with Gemini",          status: "pending" },
-  { id: "extract", label: "Extracting prompt",                    status: "pending" },
+  { id: "upload",   label: "Uploading",   status: "pending" },
+  { id: "analyse",  label: "Analysing",   status: "pending" },
+  { id: "generate", label: "Generating",  status: "pending" },
 ];
+
+/** Map backend step IDs to our 3 UI steps */
+const STEP_MAP: Record<string, string> = {
+  upload: "upload",
+  process: "analyse",
+  analyze: "analyse",
+  extract: "generate",
+};
 
 export default function Home() {
   const [dragActive, setDragActive] = useState(false);
@@ -196,8 +203,10 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const setStepStatus = (id: string, status: Step["status"]) =>
-    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  const setStepStatus = (id: string, status: Step["status"]) => {
+    const uiId = STEP_MAP[id] ?? id;
+    setSteps((prev) => prev.map((s) => (s.id === uiId ? { ...s, status } : s)));
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -507,37 +516,66 @@ export default function Home() {
           )}
         </button>
 
-        {/* Progress steps */}
-        {phase === "processing" && (
-          <div className="bg-surface-elevated border border-edge rounded-xl p-5 space-y-3">
-            <p className="text-xs font-semibold text-dim uppercase tracking-widest">Progress</p>
-            {steps.map((step) => (
-              <div key={step.id} className="flex items-center gap-3">
-                <span className="shrink-0">
-                  {step.status === "done" ? (
-                    <Check size={15} className="text-emerald-400" />
-                  ) : step.status === "active" ? (
-                    <Loader2 size={15} className="animate-spin text-accent-400" />
-                  ) : step.status === "error" ? (
-                    <X size={15} className="text-red-400" />
-                  ) : (
-                    <span className="block w-[15px] h-[15px] rounded-full border border-edge-hover" />
-                  )}
-                </span>
-                <span className={`text-sm ${
-                  step.status === "done" ? "text-foreground"
-                  : step.status === "active" ? "text-foreground"
-                  : "text-dim-muted"
-                }`}>
-                  {step.label}
-                  {step.id === "upload" && step.status === "active" && uploadProgress > 0 && (
-                    <span className="ml-2 text-accent-400 text-xs">{uploadProgress}%</span>
-                  )}
-                </span>
+        {/* Progress bar */}
+        {phase === "processing" && (() => {
+          const doneCount = steps.filter((s) => s.status === "done").length;
+          const activeStep = steps.find((s) => s.status === "active");
+          const activeIndex = activeStep ? steps.indexOf(activeStep) : -1;
+
+          // Calculate percentage: each step = 33.3%, upload uses real progress
+          let pct = (doneCount / 3) * 100;
+          if (activeStep) {
+            const stepShare = 100 / 3;
+            if (activeStep.id === "upload" && uploadProgress > 0) {
+              pct = (uploadProgress / 100) * stepShare;
+            } else {
+              pct += stepShare * 0.5; // pulse at midpoint for non-upload steps
+            }
+          }
+
+          const currentLabel = activeStep?.label ?? steps[steps.length - 1].label;
+
+          return (
+            <div className="space-y-3">
+              {/* Step labels */}
+              <div className="flex justify-between text-xs font-medium">
+                {steps.map((step, i) => (
+                  <span
+                    key={step.id}
+                    className={
+                      step.status === "done"
+                        ? "text-accent-400"
+                        : step.status === "active"
+                        ? "text-foreground"
+                        : "text-dim-muted"
+                    }
+                  >
+                    {step.label}
+                    {step.id === "upload" && step.status === "active" && uploadProgress > 0 && (
+                      <span className="ml-1 text-accent-400">{uploadProgress}%</span>
+                    )}
+                  </span>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Bar */}
+              <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent-500 transition-all duration-500 ease-out"
+                  style={{ width: `${Math.min(pct, 100)}%` }}
+                />
+              </div>
+
+              {/* Current status */}
+              <p className="text-center text-sm text-dim">
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin text-accent-400" />
+                  {currentLabel}...
+                </span>
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Error */}
         {phase === "error" && (
