@@ -537,27 +537,6 @@ export default function Home() {
 
           return (
             <div className="space-y-3">
-              {/* Step labels */}
-              <div className="flex justify-between text-xs font-medium">
-                {steps.map((step, i) => (
-                  <span
-                    key={step.id}
-                    className={
-                      step.status === "done"
-                        ? "text-accent-400"
-                        : step.status === "active"
-                        ? "text-foreground"
-                        : "text-dim-muted"
-                    }
-                  >
-                    {step.label}
-                    {step.id === "upload" && step.status === "active" && uploadProgress > 0 && (
-                      <span className="ml-1 text-accent-400">{uploadProgress}%</span>
-                    )}
-                  </span>
-                ))}
-              </div>
-
               {/* Bar */}
               <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
                 <div
